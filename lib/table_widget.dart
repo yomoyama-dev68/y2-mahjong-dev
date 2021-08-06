@@ -58,9 +58,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     data.tiles.add(6);
     data.tiles.add(7);
 
-    data.calledTiles.add(game.CalledTiles(11, "DDDD", [36+6, 36+8], "pong"));
+    data.calledTiles
+        .add(game.CalledTiles(11, "DDDD", [36 + 6, 36 + 8], "pong"));
     data.calledTiles.add(game.CalledTiles(12, "CCCC", [12, 12, 12], "kan"));
-    data.calledTiles.add(game.CalledTiles(16, "BBBB", [36+6, 36+8], "pong"));
+    data.calledTiles
+        .add(game.CalledTiles(16, "BBBB", [36 + 6, 36 + 8], "pong"));
   }
 
   @override
@@ -93,14 +95,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   List<Widget> myTiles() {
     final widgets = <Widget>[];
     const scale = 0.8;
-    for (final tile in _table
-        .myData()
-        .tiles) {
+    for (final tile in _table.myData().tiles) {
       widgets.add(
         Ink.image(
-          image: Image
-              .asset(tileToImageFileUrl(tile), scale: scale)
-              .image,
+          image: Image.asset(tileToImageFileUrl(tile), scale: scale).image,
           height: 59.0 / scale,
           width: 33.0 / scale,
           child: InkWell(
@@ -215,150 +213,104 @@ class TablePainter extends CustomPainter {
   final game.Table _tableData; // <PeerId, プレイヤーデータ> 親順ソート済み
   final Map<String, ui.Image> _imageMap;
 
-  void drewDiscardTilesForSelf(Canvas canvas, Size size, game.PlayerData data) {
-    final direction = 0;
-    final tileThickness = 14;
-
-    final baseOffset = size.center(Offset(-33 * 3, 33 * 3));
+  void drawDiscardTiles(Canvas canvas, Size size, game.PlayerData data) {
     final drawObjects = <DrawObject>[];
-    var basePosX = baseOffset.dx;
-    for (var index = 0; index < data.discardedTiles.length; index++) {
-      final tile = data.discardedTiles[index];
-      final isRiichi = data.riichiTile.contains(tile);
-      final isCalled = data.calledTilesByOther.contains(tile);
-      final image =
-      getTileImage(tile, isRiichi ? direction + 1 % 4 : direction);
 
-      final rows = index ~/ 6;
-      final pY = baseOffset.dy + rows * (image.height - tileThickness);
-      if (index % 6 == 0) {
-        basePosX = baseOffset.dx; // 行が変わる毎にリセット
-      }
-      final pX = basePosX;
-
-      final adjustX = isRiichi ? 0 : 0;
-      final adjustY = isRiichi ? 5 : 0;
-      drawObjects
-          .add(DrawObject(image, Offset(pX + adjustX, pY + adjustY), isCalled));
-      basePosX += image.width + adjustX;
+    const centerSize = 33 * 3 * 1.0;
+    for (var direction = 0; direction < 4; direction++) {
+      drawDiscardTilesPerDirection(drawObjects, data, direction,
+          size.center(centerOffset(direction, centerSize)));
     }
 
     drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
-
     final paint = Paint();
     for (final item in drawObjects) {
       canvas.drawImage(item.image, item.pos, paint);
     }
   }
 
-  void drewDiscardTilesForRight(Canvas canvas, Size size,
-      game.PlayerData data) {
-    final direction = 1;
-    final tileThickness = 16;
-
-    final baseOffset =
-    size.center(Offset(33 * 3, 33 * 3 + tileThickness.toDouble()));
-    final drawObjects = <DrawObject>[];
-    var basePosY = baseOffset.dy;
-    for (var index = 0; index < data.discardedTiles.length; index++) {
-      final tile = data.discardedTiles[index];
-      final isRiichi = data.riichiTile.contains(tile);
-      final isCalled = data.calledTilesByOther.contains(tile);
-      final image =
-      getTileImage(tile, isRiichi ? (direction + 1) % 4 : direction);
-
-      final rows = index ~/ 6;
-      final pX = baseOffset.dx + rows * image.width;
-      if (index % 6 == 0) {
-        basePosY = baseOffset.dy; // 行が変わる毎にリセット
-      }
-      final pY = basePosY - image.height;
-
-      final adjustX = isRiichi ? 5 : 0;
-      final adjustY = isRiichi ? 2 : 0;
-      drawObjects
-          .add(DrawObject(image, Offset(pX + adjustX, pY - adjustY), isCalled));
-      basePosY -= (image.height - tileThickness) + adjustY;
-    }
-
-    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
-
-    final paint = Paint();
-    for (final item in drawObjects) {
-      canvas.drawImage(item.image, item.pos, paint);
-    }
+  bool isPortrait(int direction) {
+    return direction % 2 == 0;
   }
 
-  void drewDiscardTilesForAgainst(Canvas canvas, Size size,
-      game.PlayerData data) {
-    final direction = 2;
-    final tileThickness = 14;
-
-    final baseOffset = size.center(Offset(33 * 3, -33 * 3 - 45));
-    final drawObjects = <DrawObject>[];
-    var basePosX = baseOffset.dx;
-    for (var index = 0; index < data.discardedTiles.length; index++) {
-      final tile = data.discardedTiles[index];
-      final isRiichi = data.riichiTile.contains(tile);
-      final isCalled = data.calledTilesByOther.contains(tile);
-      final image =
-      getTileImage(tile, isRiichi ? direction + 1 % 4 : direction);
-
-      final rows = index ~/ 6;
-      final pY = baseOffset.dy - rows * (image.height - tileThickness);
-      if (index % 6 == 0) {
-        basePosX = baseOffset.dx; // 行が変わる毎にリセット
-      }
-      final pX = basePosX - image.width;
-
-      final adjustX = isRiichi ? 0 : 0;
-      final adjustY = isRiichi ? 5 : 0;
-      drawObjects
-          .add(DrawObject(image, Offset(pX + adjustX, pY + adjustY), isCalled));
-      basePosX -= image.width + adjustX;
-    }
-
-    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
-
-    final paint = Paint();
-    for (final item in drawObjects) {
-      canvas.drawImage(item.image, item.pos, paint);
-    }
+  Offset centerOffset(int direction, double centerSize) {
+    if (direction == 0) return Offset(-centerSize, centerSize);
+    if (direction == 1) return Offset(centerSize, centerSize);
+    if (direction == 2) return Offset(centerSize, -centerSize + 14);
+    if (direction == 3) return Offset(-centerSize, -centerSize);
+    assert(false);
+    return Offset(0, 0);
   }
 
-  void drewDiscardTilesForLeft(Canvas canvas, Size size, game.PlayerData data) {
-    final direction = 3;
-    final tileThickness = 16;
+  int stepRowPos(int direction, ui.Image image, int tileThickness) {
+    if (direction == 0) return (image.height - tileThickness);
+    if (direction == 1) return (image.width);
+    if (direction == 2) return -(image.height - tileThickness);
+    if (direction == 3) return -(image.width);
+    assert(false);
+    return 0;
+  }
 
-    final baseOffset = size.center(Offset(-33 * 3 - 33, -33 * 3));
-    final drawObjects = <DrawObject>[];
-    var basePosY = baseOffset.dy;
+  int varRowPosToRowPos(int direction, ui.Image image, varRowPos) {
+    if (direction == 0) return (varRowPos);
+    if (direction == 1) return (varRowPos);
+    if (direction == 2) return (varRowPos - image.height);
+    if (direction == 3) return (varRowPos - image.width);
+    assert(false);
+    return 0;
+  }
+
+  int varColPosToColPos(int direction, ui.Image image, varColPos) {
+    if (direction == 0) return (varColPos);
+    if (direction == 1) return (varColPos - image.height);
+    if (direction == 2) return (varColPos - image.width);
+    if (direction == 3) return (varColPos);
+    assert(false);
+    return 0;
+  }
+
+  int stepColPos(int direction, ui.Image image) {
+    if (direction == 0) return (image.width);
+    if (direction == 1) return -(image.height);
+    if (direction == 2) return -(image.width);
+    if (direction == 3) return (image.height);
+    assert(false);
+    return 0;
+  }
+
+  void drawDiscardTilesPerDirection(List<DrawObject> drawObjects,
+      game.PlayerData data, int direction, Offset originOffset) {
+    final baseColPos =
+        isPortrait(direction) ? originOffset.dx : originOffset.dy;
+    final baseRowPos =
+        isPortrait(direction) ? originOffset.dy : originOffset.dx;
+
+    var varColPos = baseColPos;
     for (var index = 0; index < data.discardedTiles.length; index++) {
       final tile = data.discardedTiles[index];
       final isRiichi = data.riichiTile.contains(tile);
       final isCalled = data.calledTilesByOther.contains(tile);
-      final image =
-      getTileImage(tile, isRiichi ? (direction + 1) % 4 : direction);
+      final tileDirection = isRiichi ? (direction + 1) % 4 : direction;
+      final tileThickness = isPortrait(tileDirection) ? 14 : 16;
+      final image = getTileImage(tile, tileDirection);
 
       final rows = index ~/ 6;
-      final pX = baseOffset.dx - rows * image.width;
+      final varRowPos =
+          baseRowPos + rows * stepRowPos(direction, image, tileThickness);
+      final rowPos = varRowPosToRowPos(direction, image, varRowPos).toDouble();
+
       if (index % 6 == 0) {
-        basePosY = baseOffset.dy; // 行が変わる毎にリセット
+        varColPos = baseColPos; // 行が変わる毎にリセット
       }
-      final pY = basePosY;
+      if (direction == 1) varColPos += tileThickness;
+      final colPos = varColPosToColPos(direction, image, varColPos).toDouble();
+      final drawPos = isPortrait(direction)
+          ? Offset(colPos, rowPos)
+          : Offset(rowPos, colPos);
+      drawObjects.add(DrawObject(image, drawPos, isCalled));
 
-      final adjustX = isRiichi ? 5 : 0;
-      final adjustY = isRiichi ? 0 : 0;
-      drawObjects
-          .add(DrawObject(image, Offset(pX + adjustX, pY - adjustY), isCalled));
-      basePosY += (image.height - tileThickness) + adjustY;
-    }
-
-    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
-
-    final paint = Paint();
-    for (final item in drawObjects) {
-      canvas.drawImage(item.image, item.pos, paint);
+      varColPos += stepColPos(direction, image);
+      if (direction == 3) varColPos -= tileThickness;
     }
   }
 
@@ -383,7 +335,8 @@ class TablePainter extends CustomPainter {
     }
   }
 
-  Offset drawPongChowSelf(Offset baseOffset, game.CalledTiles tiles, drawObjects) {
+  Offset drawPongChowSelf(
+      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
     final direction = 0;
     final tileThickness = 16;
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
@@ -413,8 +366,7 @@ class TablePainter extends CustomPainter {
       final image = getTileImage(map[1], map[0]);
       final pX = basePosX - image.width;
       final pY = baseOffset.dy - image.height;
-      drawObjects
-          .add(DrawObject(image, Offset(pX, pY), false));
+      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
       basePosX -= image.width;
     }
 
@@ -452,10 +404,11 @@ class TablePainter extends CustomPainter {
     for (final map in tileDirectionMap) {
       final image = getTileImage(map[1], map[0]);
       final pX = basePosX - image.width;
-      final pY = map[2] == 2 ? baseOffset.dy - image.height * 2 + tileThickness : baseOffset.dy - image.height;
-      drawObjects
-          .add(DrawObject(image, Offset(pX, pY), false));
-      if (map[2] !=1 ) {
+      final pY = map[2] == 2
+          ? baseOffset.dy - image.height * 2 + tileThickness
+          : baseOffset.dy - image.height;
+      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
+      if (map[2] != 1) {
         basePosX -= image.width;
       }
     }
@@ -484,7 +437,8 @@ class TablePainter extends CustomPainter {
     }
   }
 
-  Offset drawPongChowRight(Offset baseOffset, game.CalledTiles tiles, drawObjects) {
+  Offset drawPongChowRight(
+      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
     final direction = 1;
     final tileThickness = 16;
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
@@ -514,8 +468,7 @@ class TablePainter extends CustomPainter {
       final image = getTileImage(map[1], map[0]);
       final pX = baseOffset.dx - image.width;
       final pY = basePosY;
-      drawObjects
-          .add(DrawObject(image, Offset(pX, pY), false));
+      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
       basePosY += image.height - tileThickness;
     }
 
@@ -554,11 +507,12 @@ class TablePainter extends CustomPainter {
     for (final map in tileDirectionMap) {
       final image = getTileImage(map[1], map[0]);
 
-      final pX = map[2] == 2 ? baseOffset.dx - image.width * 2 : baseOffset.dx - image.width;
+      final pX = map[2] == 2
+          ? baseOffset.dx - image.width * 2
+          : baseOffset.dx - image.width;
       final pY = basePosY;
-      drawObjects
-          .add(DrawObject(image, Offset(pX, pY), false));
-      if (map[2] !=1 ) {
+      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
+      if (map[2] != 1) {
         basePosY += image.height - tileThickness;
       }
     }
@@ -566,7 +520,8 @@ class TablePainter extends CustomPainter {
     return Offset(baseOffset.dx, basePosY);
   }
 
-  void drewCalledTilesForAgainst(Canvas canvas, Size size, game.PlayerData data) {
+  void drewCalledTilesForAgainst(
+      Canvas canvas, Size size, game.PlayerData data) {
     var baseOffset = Offset(5, 5);
     final drawObjects = <DrawObject>[];
     for (var index = 0; index < data.calledTiles.length; index++) {
@@ -587,7 +542,8 @@ class TablePainter extends CustomPainter {
     }
   }
 
-  Offset drawPongChowAgainst(Offset baseOffset, game.CalledTiles tiles, drawObjects) {
+  Offset drawPongChowAgainst(
+      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
     final direction = 2;
     final tileThickness = 14;
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
@@ -617,15 +573,15 @@ class TablePainter extends CustomPainter {
       final image = getTileImage(map[1], map[0]);
       final pX = basePosX;
       final pY = baseOffset.dy;
-      drawObjects
-          .add(DrawObject(image, Offset(pX, pY), false));
+      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
       basePosX += image.width;
     }
 
     return Offset(basePosX, baseOffset.dy);
   }
 
-  Offset drawKanAgainst(Offset baseOffset, game.CalledTiles tiles, drawObjects) {
+  Offset drawKanAgainst(
+      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
     final direction = 2;
     final tileThickness = 16;
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
@@ -658,10 +614,11 @@ class TablePainter extends CustomPainter {
       final image = getTileImage(map[1], map[0]);
 
       final pX = basePosX;
-      final pY = map[2] == 2 ? baseOffset.dy + image.height - tileThickness : baseOffset.dy;
-      drawObjects
-          .add(DrawObject(image, Offset(pX, pY), false));
-      if (map[2] !=1 ) {
+      final pY = map[2] == 2
+          ? baseOffset.dy + image.height - tileThickness
+          : baseOffset.dy;
+      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
+      if (map[2] != 1) {
         basePosX += image.width;
       }
     }
@@ -690,7 +647,8 @@ class TablePainter extends CustomPainter {
     }
   }
 
-  Offset drawPongChowLeft(Offset baseOffset, game.CalledTiles tiles, drawObjects) {
+  Offset drawPongChowLeft(
+      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
     final direction = 3;
     final tileThickness = 16;
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
@@ -720,8 +678,7 @@ class TablePainter extends CustomPainter {
       final image = getTileImage(map[1], map[0]);
       final pX = baseOffset.dx;
       final pY = basePosY - image.height;
-      drawObjects
-          .add(DrawObject(image, Offset(pX, pY), false));
+      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
       basePosY -= image.height - tileThickness;
     }
 
@@ -762,9 +719,8 @@ class TablePainter extends CustomPainter {
 
       final pX = map[2] == 2 ? baseOffset.dx + image.width : baseOffset.dx;
       final pY = basePosY - image.height;
-      drawObjects
-          .add(DrawObject(image, Offset(pX, pY), false));
-      if (map[2] !=1 ) {
+      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
+      if (map[2] != 1) {
         basePosY -= image.height - tileThickness;
       }
     }
@@ -782,11 +738,13 @@ class TablePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    drewDiscardTilesForSelf(canvas, size, _tableData.myData());
-    drewDiscardTilesForRight(canvas, size, _tableData.myData());
-    drewDiscardTilesForAgainst(canvas, size, _tableData.myData());
-    drewDiscardTilesForLeft(canvas, size, _tableData.myData());
-    drewCalledTilesForSelf(canvas, size, _tableData.myData());
+    // drewDiscardTilesForSelf(canvas, size, _tableData.myData());
+    // drewDiscardTilesForRight(canvas, size, _tableData.myData());
+    // drewDiscardTilesForAgainst(canvas, size, _tableData.myData());
+    // drewDiscardTilesForLeft(canvas, size, _tableData.myData());
+    // drewCalledTilesForSelf(canvas, size, _tableData.myData());
+    drawDiscardTiles(canvas, size, _tableData.myData());
+
     // drewCalledTilesForRight(canvas, size, _tableData.myData());
     // drewCalledTilesForAgainst(canvas, size, _tableData.myData());
     // drewCalledTilesForLeft(canvas, size, _tableData.myData());
