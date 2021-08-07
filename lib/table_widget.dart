@@ -66,11 +66,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       final data = _table.playerDataMap[keyList[other]]!;
 
       data.calledTiles.add(game.CalledTiles(
-          11, keyList[(other + 1) % 4], [36 + 6, 36 + 8], "pong"));
-      data.calledTiles.add(
-          game.CalledTiles(12, keyList[(other + 3) % 4], [12, 12, 12], "close-kan"));
+          11, keyList[(other + 3) % 4], [36 + 6, 36 + 8], "pong"));
       data.calledTiles.add(game.CalledTiles(
-          16, keyList[(other + 2) % 4], [36 + 6, 36 + 8], "pong"));
+          12, keyList[(other + 3) % 4], [12, 12, 12], "late-kan"));
+      data.calledTiles.add(game.CalledTiles(
+          16, keyList[(other + 1) % 4], [36 + 6, 36 + 8], "pong"));
     }
   }
 
@@ -196,7 +196,7 @@ class TileImages {
 
 class TileInfo {
   TileInfo(int tileId) {
-    if (tileId< 0) {
+    if (tileId < 0) {
       type = 4;
       number = 0;
     } else {
@@ -357,7 +357,7 @@ class TablePainter extends CustomPainter {
     return const Offset(0, 0);
   }
 
-  Offset steForCall(int direction) {
+  Offset stepForCall(int direction) {
     if (direction == 0) return const Offset(-5, 0);
     if (direction == 1) return const Offset(0, 5);
     if (direction == 2) return const Offset(5, 0);
@@ -370,24 +370,13 @@ class TablePainter extends CustomPainter {
       game.PlayerData data, int direction, Offset baseOffset) {
     for (var index = 0; index < data.calledTiles.length; index++) {
       final tiles = data.calledTiles[index];
-      if (tiles.callAs == "late-kan") {
-        baseOffset = drawCalledTilesLateKanPerDirection(
-            drawObjects, tiles, direction, baseOffset);
-      } else if (tiles.callAs == "open-kan") {
-        baseOffset = drawCalledTilesOpenKanPerDirection(
-            drawObjects, tiles, direction, baseOffset);
-      } else if (tiles.callAs == "close-kan") {
-        baseOffset = drawCalledTilesCloseKanPerDirection(
-            drawObjects, tiles, direction, baseOffset);
-      } else {
-        baseOffset = drawCalledTilesPongChowPerDirection(
-            drawObjects, tiles, direction, baseOffset);
-      }
-      baseOffset = baseOffset + steForCall(direction);
+      baseOffset = drawCalledTilesPerDirection2(
+          drawObjects, tiles, direction, baseOffset);
+      baseOffset = baseOffset + stepForCall(direction);
     }
   }
 
-  Offset offsetDrawPongChow(int direction, ui.Image image) {
+  Offset baseOffsetForDrawCalledTiles(int direction, ui.Image image) {
     // return Offset(dx: Col, dy: Row)
     if (direction == 0) {
       return Offset(-image.width.toDouble(), -image.height.toDouble());
@@ -399,16 +388,19 @@ class TablePainter extends CustomPainter {
     return const Offset(0, 0);
   }
 
-  Offset offsetDrawAddKan(int direction, ui.Image image, int stepMode, int tileThickness) {
+  Offset offsetForDrawCalledTiles(
+      int direction, ui.Image image, int stepMode, int tileThickness) {
     // return Offset(dx: Col, dy: Row)
-    final base = offsetDrawPongChow(direction, image);
+    final base = baseOffsetForDrawCalledTiles(direction, image);
     if (stepMode != 2) {
       return base;
     }
 
-    if (direction == 0) return base.translate(0, -image.height.toDouble() + tileThickness);
+    if (direction == 0)
+      return base.translate(0, -image.height.toDouble() + tileThickness);
     if (direction == 1) return base.translate(0, -image.width.toDouble());
-    if (direction == 2) return base.translate(0, image.height.toDouble() - tileThickness);
+    if (direction == 2)
+      return base.translate(0, image.height.toDouble() - tileThickness);
     if (direction == 3) return base.translate(0, image.width.toDouble());
     assert(false);
     return const Offset(0, 0);
@@ -423,64 +415,57 @@ class TablePainter extends CustomPainter {
     return 0;
   }
 
-  Offset drawCalledTilesPongChowPerDirection(List<DrawObject> drawObjects,
-      game.CalledTiles tiles, int direction, Offset baseOffset) {
+  List<List<int>> createCalledTileDirectionMap(
+    game.CalledTiles tiles,
+    int direction,
+  ) {
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
     final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    print('$peerId ${tiles.calledFrom} ${callDirection}');
     assert(callDirection != 0);
-
     final calledTileDirection = (direction + 1) % 4;
-    final tileDirectionMap = <List<int>>[]; // direction, tile
-    tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-    tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-    tileDirectionMap
-        .insert(callDirection - 1, [calledTileDirection, tiles.calledTile]);
 
-    var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
-    var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
-
-    for (final map in tileDirectionMap) {
-      final tile = map[1];
-      final tileDirection = map[0];
-      final tileThickness = isPortrait(tileDirection) ? 14 : 16;
-      final image = getTileImage(tile, tileDirection);
-
-      if (direction == 3) baseColPos += tileThickness;
-
-      final posOffset = offsetDrawPongChow(direction, image);
-      final colPos = baseColPos + posOffset.dx;
-      final rowPos = baseRowPos + posOffset.dy;
-
-      final drawPos = isPortrait(direction)
-          ? Offset(colPos, rowPos)
-          : Offset(rowPos, colPos);
-      drawObjects.add(DrawObject(image, drawPos, false));
-
-      baseColPos += stepColForDrawPongChow(direction, image, tileThickness);
-      if (direction == 1) baseColPos += -tileThickness;
+    final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
+    if (tiles.callAs == "pong" || tiles.callAs == "chow") {
+      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
+      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
+      tileDirectionMap.insert(
+          callDirection - 1, [calledTileDirection, tiles.calledTile, 0]);
     }
 
-    return isPortrait(direction)
-        ? Offset(baseColPos, baseRowPos)
-        : Offset(baseRowPos, baseColPos);
+    if (tiles.callAs == "open-kan") {
+      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
+      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
+      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
+      if (callDirection == 3) {
+        tileDirectionMap.add([calledTileDirection, tiles.calledTile, 0]);
+      } else {
+        tileDirectionMap.insert(
+            callDirection - 1, [calledTileDirection, tiles.calledTile, 0]);
+      }
+    }
+
+    if (tiles.callAs == "close-kan") {
+      tileDirectionMap.add([direction, -1, 0]);
+      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
+      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
+      tileDirectionMap.add([direction, -1, 0]);
+    }
+
+    if (tiles.callAs == "late-kan") {
+      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
+      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
+      tileDirectionMap.insert(
+          callDirection - 1, [calledTileDirection, tiles.calledTile, 1]);
+      tileDirectionMap.insert(
+          callDirection, [calledTileDirection, tiles.selectedTiles[2], 2]);
+    }
+
+    return tileDirectionMap;
   }
 
-  Offset drawCalledTilesLateKanPerDirection(List<DrawObject> drawObjects,
+  Offset drawCalledTilesPerDirection2(List<DrawObject> drawObjects,
       game.CalledTiles tiles, int direction, Offset baseOffset) {
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    assert(callDirection != 0);
-
-    final calledTileDirection = (direction + 1) % 4;
-    final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
-    tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-    tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-    tileDirectionMap
-        .insert(callDirection - 1, [calledTileDirection, tiles.calledTile, 1]);
-    tileDirectionMap.insert(
-        callDirection, [calledTileDirection, tiles.selectedTiles[2], 2]);
-
+    final tileDirectionMap = createCalledTileDirectionMap(tiles, direction);
     var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
     var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
 
@@ -495,106 +480,8 @@ class TablePainter extends CustomPainter {
         if (direction == 3) baseColPos += tileThickness;
       }
 
-      final posOffset = offsetDrawAddKan(direction, image, stepMode, tileThickness);
-      final colPos = baseColPos + posOffset.dx;
-      var rowPos = baseRowPos + posOffset.dy;
-
-      final drawPos = isPortrait(direction)
-          ? Offset(colPos, rowPos)
-          : Offset(rowPos, colPos);
-      drawObjects.add(DrawObject(image, drawPos, false));
-
-      if (stepMode != 1) {
-        baseColPos += stepColForDrawPongChow(direction, image, tileThickness);
-        if (direction == 1) baseColPos += -tileThickness;
-      }
-    }
-
-    return isPortrait(direction)
-        ? Offset(baseColPos, baseRowPos)
-        : Offset(baseRowPos, baseColPos);
-  }
-
-  Offset drawCalledTilesOpenKanPerDirection(List<DrawObject> drawObjects,
-      game.CalledTiles tiles, int direction, Offset baseOffset) {
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    assert(callDirection != 0);
-
-    final calledTileDirection = (direction + 1) % 4;
-    final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
-    tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-    tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-    tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    if (callDirection == 3) {
-      tileDirectionMap.add([calledTileDirection, tiles.calledTile, 0]);
-    } else {
-      tileDirectionMap
-          .insert(callDirection - 1, [calledTileDirection, tiles.calledTile, 0]);
-    }
-
-    var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
-    var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
-
-    for (final map in tileDirectionMap) {
-      final tile = map[1];
-      final tileDirection = map[0];
-      final stepMode = map[2];
-      final tileThickness = isPortrait(tileDirection) ? 14 : 16;
-      final image = getTileImage(tile, tileDirection);
-
-      if (stepMode != 2) {
-        if (direction == 3) baseColPos += tileThickness;
-      }
-
-      final posOffset = offsetDrawAddKan(direction, image, stepMode, tileThickness);
-      final colPos = baseColPos + posOffset.dx;
-      var rowPos = baseRowPos + posOffset.dy;
-
-      final drawPos = isPortrait(direction)
-          ? Offset(colPos, rowPos)
-          : Offset(rowPos, colPos);
-      drawObjects.add(DrawObject(image, drawPos, false));
-
-      if (stepMode != 1) {
-        baseColPos += stepColForDrawPongChow(direction, image, tileThickness);
-        if (direction == 1) baseColPos += -tileThickness;
-      }
-    }
-
-    return isPortrait(direction)
-        ? Offset(baseColPos, baseRowPos)
-        : Offset(baseRowPos, baseColPos);
-  }
-
-  Offset drawCalledTilesCloseKanPerDirection(List<DrawObject> drawObjects,
-      game.CalledTiles tiles, int direction, Offset baseOffset) {
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    assert(callDirection != 0);
-
-    final calledTileDirection = (direction + 1) % 4;
-    final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
-    tileDirectionMap.add([direction, -1, 0]);
-    tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-    tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    tileDirectionMap.add([direction, -1, 0]);
-
-    var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
-    var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
-
-    for (final map in tileDirectionMap) {
-      final tile = map[1];
-      final tileDirection = map[0];
-      final stepMode = map[2];
-      final tileThickness = isPortrait(tileDirection) ? 14 : 16;
-      final image = getTileImage(tile, tileDirection);
-
-      if (stepMode != 2) {
-        if (direction == 3) baseColPos += tileThickness;
-      }
-
-      final posOffset = offsetDrawAddKan(direction, image, stepMode, tileThickness);
+      final posOffset =
+          offsetForDrawCalledTiles(direction, image, stepMode, tileThickness);
       final colPos = baseColPos + posOffset.dx;
       var rowPos = baseRowPos + posOffset.dy;
 
