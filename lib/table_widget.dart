@@ -35,6 +35,17 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     final keyList = _table.playerDataMap.keys.toList();
     _table.myPeerId = keyList[playerIndex];
 
+    _table.deadWallTiles.add(0);
+    _table.deadWallTiles.add(1);
+    _table.deadWallTiles.add(2);
+    _table.deadWallTiles.add(3);
+    _table.deadWallTiles.add(4);
+    _table.deadWallTiles.add(5);
+    _table.deadWallTiles.add(6);
+    _table.deadWallTiles.add(7);
+    _table.deadWallTiles.add(8);
+    _table.deadWallTiles.add(9);
+
     final data = _table.playerDataMap[_table.myPeerId]!;
     data.discardedTiles.add(0);
     data.discardedTiles.add(1);
@@ -60,6 +71,13 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     data.tiles.add(5);
     data.tiles.add(6);
     data.tiles.add(7);
+    data.tiles.add(8);
+    data.tiles.add(9);
+    data.tiles.add(10);
+    data.tiles.add(11);
+    data.tiles.add(12);
+
+    data.drewTile.add(12);
 
     for (var direction = 0; direction < 4; direction++) {
       final other = (playerIndex + direction) % 4;
@@ -501,6 +519,65 @@ class TablePainter extends CustomPainter {
         : Offset(baseRowPos, baseColPos);
   }
 
+  void drawDeadWall(Canvas canvas, Size size) {
+    final drawObjects = <DrawObject>[];
+    const tileDirection = 0;
+    const tileThickness = 14.0;
+
+    final closeTileImage = getTileImage(-1, tileDirection);
+    final tileWidth = closeTileImage.width.toDouble();
+    final tileHeight = closeTileImage.height.toDouble();
+
+    final baseOffset = size.center(Offset(-tileWidth * 2.5, -tileHeight));
+
+    for (var i = 0; i < 10; i++) {
+      final image = (i < 10 - (_tableData.countOfKan + 1))
+          ? getTileImage(-1, tileDirection)
+          : getTileImage(_tableData.deadWallTiles[i], tileDirection);
+      final cols = i % 5;
+      final rows = i ~/ 5;
+      final drawPos =
+          baseOffset.translate(cols * tileWidth, rows * -tileThickness);
+      drawObjects.add(DrawObject(image, drawPos, false));
+    }
+
+    drawObjects.sort((a, b) => b.pos.dy.compareTo(a.pos.dy));
+    final paint = Paint();
+    for (final item in drawObjects) {
+      canvas.drawImage(item.image, item.pos, paint);
+    }
+  }
+
+  void drawMyWall(Canvas canvas, Size size, game.PlayerData data) {
+    final drawObjects = <DrawObject>[];
+    const tileDirection = 4;
+
+    final closeTileImage = getTileImage(0, tileDirection);
+    final tileWidth = closeTileImage.width.toDouble();
+    final tileHeight = closeTileImage.height.toDouble();
+
+    final baseOffset = Offset(tileWidth * 3 + 5, size.height - 5);
+
+    for (var i=0; i<data.tiles.length; i++) {
+      final image = getTileImage(data.tiles[i], 4);
+      final drawPos = baseOffset.translate(i * tileWidth, -tileHeight);
+      drawObjects.add(DrawObject(image, drawPos, false));
+    }
+
+    assert(data.drewTile.length<=1);
+    for (var i=0; i<data.drewTile.length; i++) {
+      final image = getTileImage(data.drewTile[i], tileDirection);
+      final drawPos = baseOffset.translate(data.tiles.length * tileWidth + 10, -tileHeight);
+      drawObjects.add(DrawObject(image, drawPos, false));
+    }
+
+    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
+    final paint = Paint();
+    for (final item in drawObjects) {
+      canvas.drawImage(item.image, item.pos, paint);
+    }
+  }
+
   ui.Image getTileImage(int tile, direction) {
     // direction = 0: 打牌(上向, 1: 打牌(左向, 2: 打牌(下向, 3: 打牌(右向, 4: 自牌(上向,
     final info = TileInfo(tile);
@@ -513,6 +590,8 @@ class TablePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     drawDiscardTiles(canvas, size, _tableData.myData());
     drawCalledTiles(canvas, size);
+    drawDeadWall(canvas, size);
+    drawMyWall(canvas, size, _tableData.myData());
 
     final paint = Paint();
     canvas.drawLine(
