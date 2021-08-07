@@ -31,7 +31,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     super.initState();
     _tileImages = TileImages(onTileImageLoaded);
     _table = game.Table(_members);
-    _table.myPeerId = "AAAA";
+    int playerIndex = 0;
+    final keyList = _table.playerDataMap.keys.toList();
+    _table.myPeerId = keyList[playerIndex];
+
     final data = _table.playerDataMap[_table.myPeerId]!;
     data.discardedTiles.add(0);
     data.discardedTiles.add(1);
@@ -58,11 +61,17 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     data.tiles.add(6);
     data.tiles.add(7);
 
-    data.calledTiles
-        .add(game.CalledTiles(11, "DDDD", [36 + 6, 36 + 8], "pong"));
-    data.calledTiles.add(game.CalledTiles(12, "CCCC", [12, 12, 12], "kan"));
-    data.calledTiles
-        .add(game.CalledTiles(16, "BBBB", [36 + 6, 36 + 8], "pong"));
+    for (var direction = 0; direction < 4; direction++) {
+      final other = (playerIndex + direction) % 4;
+      final data = _table.playerDataMap[keyList[other]]!;
+
+      data.calledTiles.add(game.CalledTiles(
+          11, keyList[(other + 1) % 4], [36 + 6, 36 + 8], "pong"));
+      data.calledTiles.add(
+          game.CalledTiles(12, keyList[(other + 3) % 4], [12, 12, 12], "add-kan"));
+      data.calledTiles.add(game.CalledTiles(
+          16, keyList[(other + 2) % 4], [36 + 6, 36 + 8], "pong"));
+    }
   }
 
   @override
@@ -314,418 +323,185 @@ class TablePainter extends CustomPainter {
     }
   }
 
-  void drewCalledTilesForSelf(Canvas canvas, Size size, game.PlayerData data) {
-    var baseOffset = Offset(size.width - 5, size.height - 5);
+  void drawCalledTiles(Canvas canvas, Size size) {
     final drawObjects = <DrawObject>[];
-    for (var index = 0; index < data.calledTiles.length; index++) {
-      final tiles = data.calledTiles[index];
-      if (tiles.callAs == "kan") {
-        baseOffset = drawKanSelf(baseOffset, tiles, drawObjects);
-      } else {
-        baseOffset = drawPongChowSelf(baseOffset, tiles, drawObjects);
-      }
-      baseOffset = Offset(baseOffset.dx - 5, baseOffset.dy);
+
+    final keyList = _tableData.playerDataMap.keys.toList();
+
+    final baseDirection = keyList.indexOf(_tableData.myPeerId);
+    for (var direction = 0; direction < 4; direction++) {
+      final index = (baseDirection + direction) % 4;
+      final data = _tableData.playerDataMap[keyList[index]]!;
+      drawCalledTilesPerDirection(
+          drawObjects, data, direction, offsetForCall(direction, size));
     }
 
     drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
-
     final paint = Paint();
     for (final item in drawObjects) {
       canvas.drawImage(item.image, item.pos, paint);
     }
   }
 
-  Offset drawPongChowSelf(
-      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
-    final direction = 0;
-    final tileThickness = 16;
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    print('$peerId ${tiles.calledFrom} ${callDirection}');
-    assert(callDirection != 0);
-
-    final tileDirectionMap = <List<int>>[]; // direction, tile
-    if (callDirection == 1) {
-      tileDirectionMap.add([1, tiles.calledTile]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-    }
-    if (callDirection == 2) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([1, tiles.calledTile]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-    }
-    if (callDirection == 3) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-      tileDirectionMap.add([1, tiles.calledTile]);
-    }
-
-    var basePosX = baseOffset.dx;
-    for (final map in tileDirectionMap) {
-      final image = getTileImage(map[1], map[0]);
-      final pX = basePosX - image.width;
-      final pY = baseOffset.dy - image.height;
-      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
-      basePosX -= image.width;
-    }
-
-    return Offset(basePosX, baseOffset.dy);
+  Offset offsetForCall(int direction, Size size) {
+    if (direction == 0) return Offset(size.width - 5, size.height - 5);
+    if (direction == 1) return Offset(size.width - 5, 5);
+    if (direction == 2) return const Offset(5, 5);
+    if (direction == 3) return Offset(5, size.height - 5 - 14);
+    assert(false);
+    return const Offset(0, 0);
   }
 
-  Offset drawKanSelf(Offset baseOffset, game.CalledTiles tiles, drawObjects) {
-    final direction = 0;
-    final tileThickness = 16;
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    assert(callDirection != 0);
-
-    final tileDirectionMap = <List<int>>[]; // direction, tile, offset
-    if (callDirection == 1) {
-      tileDirectionMap.add([1, tiles.calledTile, 1]);
-      tileDirectionMap.add([1, tiles.selectedTiles[0], 2]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    }
-    if (callDirection == 2) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-      tileDirectionMap.add([1, tiles.calledTile, 1]);
-      tileDirectionMap.add([1, tiles.selectedTiles[1], 2]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    }
-    if (callDirection == 3) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([1, tiles.calledTile, 1]);
-      tileDirectionMap.add([1, tiles.selectedTiles[2], 2]);
-    }
-
-    var basePosX = baseOffset.dx;
-    for (final map in tileDirectionMap) {
-      final image = getTileImage(map[1], map[0]);
-      final pX = basePosX - image.width;
-      final pY = map[2] == 2
-          ? baseOffset.dy - image.height * 2 + tileThickness
-          : baseOffset.dy - image.height;
-      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
-      if (map[2] != 1) {
-        basePosX -= image.width;
-      }
-    }
-
-    return Offset(basePosX, baseOffset.dy);
+  Offset steForCall(int direction) {
+    if (direction == 0) return const Offset(-5, 0);
+    if (direction == 1) return const Offset(0, 5);
+    if (direction == 2) return const Offset(5, 0);
+    if (direction == 3) return const Offset(0, -5);
+    assert(false);
+    return const Offset(0, 0);
   }
 
-  void drewCalledTilesForRight(Canvas canvas, Size size, game.PlayerData data) {
-    var baseOffset = Offset(size.width - 5, 5);
-    final drawObjects = <DrawObject>[];
+  void drawCalledTilesPerDirection(List<DrawObject> drawObjects,
+      game.PlayerData data, int direction, Offset baseOffset) {
     for (var index = 0; index < data.calledTiles.length; index++) {
       final tiles = data.calledTiles[index];
-      if (tiles.callAs == "kan") {
-        baseOffset = drawKanRight(baseOffset, tiles, drawObjects);
+      if (tiles.callAs == "add-kan") {
+        baseOffset = drawCalledTilesAddedKanPerDirection(
+            drawObjects, tiles, direction, baseOffset);
       } else {
-        baseOffset = drawPongChowRight(baseOffset, tiles, drawObjects);
+        baseOffset = drawCalledTilesPongChowPerDirection(
+            drawObjects, tiles, direction, baseOffset);
       }
-      baseOffset = Offset(baseOffset.dx, baseOffset.dy + 5);
-    }
-
-    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
-
-    final paint = Paint();
-    for (final item in drawObjects) {
-      canvas.drawImage(item.image, item.pos, paint);
+      baseOffset = baseOffset + steForCall(direction);
     }
   }
 
-  Offset drawPongChowRight(
-      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
-    final direction = 1;
-    final tileThickness = 16;
+  Offset offsetDrawPongChow(int direction, ui.Image image) {
+    // return Offset(dx: Col, dy: Row)
+    if (direction == 0) {
+      return Offset(-image.width.toDouble(), -image.height.toDouble());
+    }
+    if (direction == 1) return Offset(0, -image.width.toDouble());
+    if (direction == 2) return const Offset(0, 0);
+    if (direction == 3) return Offset(-image.height.toDouble(), 0);
+    assert(false);
+    return const Offset(0, 0);
+  }
+
+  Offset offsetDrawAddKan(int direction, ui.Image image, int stepMode, int tileThickness) {
+    // return Offset(dx: Col, dy: Row)
+    final base = offsetDrawPongChow(direction, image);
+    if (stepMode != 2) {
+      return base;
+    }
+
+    if (direction == 0) return base.translate(0, -image.height.toDouble() + tileThickness);
+    if (direction == 1) return base.translate(0, -image.width.toDouble());
+    if (direction == 2) return base.translate(0, image.height.toDouble() - tileThickness);
+    if (direction == 3) return base.translate(0, image.width.toDouble());
+    assert(false);
+    return const Offset(0, 0);
+  }
+
+  int stepColForDrawPongChow(int direction, ui.Image image, int tileThickness) {
+    if (direction == 0) return -image.width;
+    if (direction == 1) return (image.height - tileThickness * 0);
+    if (direction == 2) return image.width;
+    if (direction == 3) return -(image.height - tileThickness * 0);
+    assert(false);
+    return 0;
+  }
+
+  Offset drawCalledTilesPongChowPerDirection(List<DrawObject> drawObjects,
+      game.CalledTiles tiles, int direction, Offset baseOffset) {
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
     final callDirection = _tableData.direction(peerId, tiles.calledFrom);
     print('$peerId ${tiles.calledFrom} ${callDirection}');
     assert(callDirection != 0);
 
+    final calledTileDirection = (direction + 1) % 4;
     final tileDirectionMap = <List<int>>[]; // direction, tile
-    if (callDirection == 1) {
-      tileDirectionMap.add([2, tiles.calledTile]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-    }
-    if (callDirection == 2) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([2, tiles.calledTile]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-    }
-    if (callDirection == 3) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-      tileDirectionMap.add([2, tiles.calledTile]);
-    }
+    tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
+    tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
+    tileDirectionMap
+        .insert(callDirection - 1, [calledTileDirection, tiles.calledTile]);
 
-    var basePosY = baseOffset.dy;
+    var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
+    var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
+
     for (final map in tileDirectionMap) {
-      final image = getTileImage(map[1], map[0]);
-      final pX = baseOffset.dx - image.width;
-      final pY = basePosY;
-      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
-      basePosY += image.height - tileThickness;
+      final tile = map[1];
+      final tileDirection = map[0];
+      final tileThickness = isPortrait(tileDirection) ? 14 : 16;
+      final image = getTileImage(tile, tileDirection);
+
+      if (direction == 3) baseColPos += tileThickness;
+
+      final posOffset = offsetDrawPongChow(direction, image);
+      final colPos = baseColPos + posOffset.dx;
+      final rowPos = baseRowPos + posOffset.dy;
+
+      final drawPos = isPortrait(direction)
+          ? Offset(colPos, rowPos)
+          : Offset(rowPos, colPos);
+      drawObjects.add(DrawObject(image, drawPos, false));
+
+      baseColPos += stepColForDrawPongChow(direction, image, tileThickness);
+      if (direction == 1) baseColPos += -tileThickness;
     }
 
-    return Offset(baseOffset.dx, basePosY);
+    return isPortrait(direction)
+        ? Offset(baseColPos, baseRowPos)
+        : Offset(baseRowPos, baseColPos);
   }
 
-  Offset drawKanRight(Offset baseOffset, game.CalledTiles tiles, drawObjects) {
-    final direction = 1;
-    final tileThickness = 16;
+  Offset drawCalledTilesAddedKanPerDirection(List<DrawObject> drawObjects,
+      game.CalledTiles tiles, int direction, Offset baseOffset) {
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
     final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    print('$peerId ${tiles.calledFrom} ${callDirection}');
     assert(callDirection != 0);
 
-    final tileDirectionMap = <List<int>>[]; // direction, tile, offset
-    if (callDirection == 1) {
-      tileDirectionMap.add([2, tiles.calledTile, 1]);
-      tileDirectionMap.add([2, tiles.selectedTiles[0], 2]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    }
-    if (callDirection == 2) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-      tileDirectionMap.add([2, tiles.calledTile, 1]);
-      tileDirectionMap.add([2, tiles.selectedTiles[1], 2]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    }
-    if (callDirection == 3) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([2, tiles.calledTile, 1]);
-      tileDirectionMap.add([2, tiles.selectedTiles[2], 2]);
-    }
+    final calledTileDirection = (direction + 1) % 4;
+    final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
+    tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
+    tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
+    tileDirectionMap
+        .insert(callDirection - 1, [calledTileDirection, tiles.calledTile, 1]);
+    tileDirectionMap.insert(
+        callDirection, [calledTileDirection, tiles.selectedTiles[2], 2]);
 
-    var basePosY = baseOffset.dy;
+    var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
+    var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
+
     for (final map in tileDirectionMap) {
-      final image = getTileImage(map[1], map[0]);
+      final tile = map[1];
+      final tileDirection = map[0];
+      final stepMode = map[2];
+      final tileThickness = isPortrait(tileDirection) ? 14 : 16;
+      final image = getTileImage(tile, tileDirection);
 
-      final pX = map[2] == 2
-          ? baseOffset.dx - image.width * 2
-          : baseOffset.dx - image.width;
-      final pY = basePosY;
-      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
-      if (map[2] != 1) {
-        basePosY += image.height - tileThickness;
+      if (stepMode != 2) {
+        if (direction == 3) baseColPos += tileThickness;
+      }
+
+      final posOffset = offsetDrawAddKan(direction, image, stepMode, tileThickness);
+      final colPos = baseColPos + posOffset.dx;
+      var rowPos = baseRowPos + posOffset.dy;
+
+      final drawPos = isPortrait(direction)
+          ? Offset(colPos, rowPos)
+          : Offset(rowPos, colPos);
+      drawObjects.add(DrawObject(image, drawPos, false));
+
+      if (stepMode != 1) {
+        baseColPos += stepColForDrawPongChow(direction, image, tileThickness);
+        if (direction == 1) baseColPos += -tileThickness;
       }
     }
 
-    return Offset(baseOffset.dx, basePosY);
-  }
-
-  void drewCalledTilesForAgainst(
-      Canvas canvas, Size size, game.PlayerData data) {
-    var baseOffset = Offset(5, 5);
-    final drawObjects = <DrawObject>[];
-    for (var index = 0; index < data.calledTiles.length; index++) {
-      final tiles = data.calledTiles[index];
-      if (tiles.callAs == "kan") {
-        baseOffset = drawKanAgainst(baseOffset, tiles, drawObjects);
-      } else {
-        baseOffset = drawPongChowAgainst(baseOffset, tiles, drawObjects);
-      }
-      baseOffset = Offset(baseOffset.dx + 5, baseOffset.dy);
-    }
-
-    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
-
-    final paint = Paint();
-    for (final item in drawObjects) {
-      canvas.drawImage(item.image, item.pos, paint);
-    }
-  }
-
-  Offset drawPongChowAgainst(
-      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
-    final direction = 2;
-    final tileThickness = 14;
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    print('$peerId ${tiles.calledFrom} ${callDirection}');
-    assert(callDirection != 0);
-
-    final tileDirectionMap = <List<int>>[]; // direction, tile
-    if (callDirection == 1) {
-      tileDirectionMap.add([3, tiles.calledTile]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-    }
-    if (callDirection == 2) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([3, tiles.calledTile]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-    }
-    if (callDirection == 3) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-      tileDirectionMap.add([3, tiles.calledTile]);
-    }
-
-    var basePosX = baseOffset.dx;
-    for (final map in tileDirectionMap) {
-      final image = getTileImage(map[1], map[0]);
-      final pX = basePosX;
-      final pY = baseOffset.dy;
-      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
-      basePosX += image.width;
-    }
-
-    return Offset(basePosX, baseOffset.dy);
-  }
-
-  Offset drawKanAgainst(
-      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
-    final direction = 2;
-    final tileThickness = 16;
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    print('$peerId ${tiles.calledFrom} ${callDirection}');
-    assert(callDirection != 0);
-
-    final tileDirectionMap = <List<int>>[]; // direction, tile, offset
-    if (callDirection == 1) {
-      tileDirectionMap.add([3, tiles.calledTile, 1]);
-      tileDirectionMap.add([3, tiles.selectedTiles[0], 2]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    }
-    if (callDirection == 2) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-      tileDirectionMap.add([3, tiles.calledTile, 1]);
-      tileDirectionMap.add([3, tiles.selectedTiles[1], 2]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    }
-    if (callDirection == 3) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([3, tiles.calledTile, 1]);
-      tileDirectionMap.add([3, tiles.selectedTiles[2], 2]);
-    }
-
-    var basePosX = baseOffset.dx;
-    for (final map in tileDirectionMap) {
-      final image = getTileImage(map[1], map[0]);
-
-      final pX = basePosX;
-      final pY = map[2] == 2
-          ? baseOffset.dy + image.height - tileThickness
-          : baseOffset.dy;
-      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
-      if (map[2] != 1) {
-        basePosX += image.width;
-      }
-    }
-
-    return Offset(basePosX, baseOffset.dy);
-  }
-
-  void drewCalledTilesForLeft(Canvas canvas, Size size, game.PlayerData data) {
-    var baseOffset = Offset(5, size.height - 33);
-    final drawObjects = <DrawObject>[];
-    for (var index = 0; index < data.calledTiles.length; index++) {
-      final tiles = data.calledTiles[index];
-      if (tiles.callAs == "kan") {
-        baseOffset = drawKanLeft(baseOffset, tiles, drawObjects);
-      } else {
-        baseOffset = drawPongChowLeft(baseOffset, tiles, drawObjects);
-      }
-      baseOffset = Offset(baseOffset.dx, baseOffset.dy - 5);
-    }
-
-    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
-
-    final paint = Paint();
-    for (final item in drawObjects) {
-      canvas.drawImage(item.image, item.pos, paint);
-    }
-  }
-
-  Offset drawPongChowLeft(
-      Offset baseOffset, game.CalledTiles tiles, drawObjects) {
-    final direction = 3;
-    final tileThickness = 16;
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    print('$peerId ${tiles.calledFrom} ${callDirection}');
-    assert(callDirection != 0);
-
-    final tileDirectionMap = <List<int>>[]; // direction, tile
-    if (callDirection == 1) {
-      tileDirectionMap.add([0, tiles.calledTile]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-    }
-    if (callDirection == 2) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([0, tiles.calledTile]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-    }
-    if (callDirection == 3) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0]]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1]]);
-      tileDirectionMap.add([0, tiles.calledTile]);
-    }
-
-    var basePosY = baseOffset.dy;
-    for (final map in tileDirectionMap) {
-      final image = getTileImage(map[1], map[0]);
-      final pX = baseOffset.dx;
-      final pY = basePosY - image.height;
-      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
-      basePosY -= image.height - tileThickness;
-    }
-
-    return Offset(baseOffset.dx, basePosY);
-  }
-
-  Offset drawKanLeft(Offset baseOffset, game.CalledTiles tiles, drawObjects) {
-    final direction = 3;
-    final tileThickness = 16;
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    print('$peerId ${tiles.calledFrom} ${callDirection}');
-    assert(callDirection != 0);
-
-    final tileDirectionMap = <List<int>>[]; // direction, tile, offset
-    if (callDirection == 1) {
-      tileDirectionMap.add([0, tiles.calledTile, 1]);
-      tileDirectionMap.add([0, tiles.selectedTiles[0], 2]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    }
-    if (callDirection == 2) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-      tileDirectionMap.add([0, tiles.calledTile, 1]);
-      tileDirectionMap.add([0, tiles.selectedTiles[1], 2]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-    }
-    if (callDirection == 3) {
-      tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([0, tiles.calledTile, 1]);
-      tileDirectionMap.add([0, tiles.selectedTiles[2], 2]);
-    }
-
-    var basePosY = baseOffset.dy;
-    for (final map in tileDirectionMap) {
-      final image = getTileImage(map[1], map[0]);
-
-      final pX = map[2] == 2 ? baseOffset.dx + image.width : baseOffset.dx;
-      final pY = basePosY - image.height;
-      drawObjects.add(DrawObject(image, Offset(pX, pY), false));
-      if (map[2] != 1) {
-        basePosY -= image.height - tileThickness;
-      }
-    }
-
-    return Offset(baseOffset.dx, basePosY);
+    return isPortrait(direction)
+        ? Offset(baseColPos, baseRowPos)
+        : Offset(baseRowPos, baseColPos);
   }
 
   ui.Image getTileImage(int tile, direction) {
@@ -738,16 +514,9 @@ class TablePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // drewDiscardTilesForSelf(canvas, size, _tableData.myData());
-    // drewDiscardTilesForRight(canvas, size, _tableData.myData());
-    // drewDiscardTilesForAgainst(canvas, size, _tableData.myData());
-    // drewDiscardTilesForLeft(canvas, size, _tableData.myData());
-    // drewCalledTilesForSelf(canvas, size, _tableData.myData());
     drawDiscardTiles(canvas, size, _tableData.myData());
+    drawCalledTiles(canvas, size);
 
-    // drewCalledTilesForRight(canvas, size, _tableData.myData());
-    // drewCalledTilesForAgainst(canvas, size, _tableData.myData());
-    // drewCalledTilesForLeft(canvas, size, _tableData.myData());
     final paint = Paint();
     canvas.drawLine(
         Offset(size.width / 2, 0), Offset(size.width / 2, size.height), paint);
