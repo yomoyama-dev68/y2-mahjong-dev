@@ -68,7 +68,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       data.calledTiles.add(game.CalledTiles(
           11, keyList[(other + 1) % 4], [36 + 6, 36 + 8], "pong"));
       data.calledTiles.add(
-          game.CalledTiles(12, keyList[(other + 3) % 4], [12, 12, 12], "add-kan"));
+          game.CalledTiles(12, keyList[(other + 3) % 4], [12, 12, 12], "open-kan"));
       data.calledTiles.add(game.CalledTiles(
           16, keyList[(other + 2) % 4], [36 + 6, 36 + 8], "pong"));
     }
@@ -365,8 +365,11 @@ class TablePainter extends CustomPainter {
       game.PlayerData data, int direction, Offset baseOffset) {
     for (var index = 0; index < data.calledTiles.length; index++) {
       final tiles = data.calledTiles[index];
-      if (tiles.callAs == "add-kan") {
-        baseOffset = drawCalledTilesAddedKanPerDirection(
+      if (tiles.callAs == "late-kan") {
+        baseOffset = drawCalledTilesLateKanPerDirection(
+            drawObjects, tiles, direction, baseOffset);
+      } else if (tiles.callAs == "open-kan") {
+        baseOffset = drawCalledTilesOpenKanPerDirection(
             drawObjects, tiles, direction, baseOffset);
       } else {
         baseOffset = drawCalledTilesPongChowPerDirection(
@@ -455,7 +458,7 @@ class TablePainter extends CustomPainter {
         : Offset(baseRowPos, baseColPos);
   }
 
-  Offset drawCalledTilesAddedKanPerDirection(List<DrawObject> drawObjects,
+  Offset drawCalledTilesLateKanPerDirection(List<DrawObject> drawObjects,
       game.CalledTiles tiles, int direction, Offset baseOffset) {
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
     final callDirection = _tableData.direction(peerId, tiles.calledFrom);
@@ -469,6 +472,58 @@ class TablePainter extends CustomPainter {
         .insert(callDirection - 1, [calledTileDirection, tiles.calledTile, 1]);
     tileDirectionMap.insert(
         callDirection, [calledTileDirection, tiles.selectedTiles[2], 2]);
+
+    var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
+    var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
+
+    for (final map in tileDirectionMap) {
+      final tile = map[1];
+      final tileDirection = map[0];
+      final stepMode = map[2];
+      final tileThickness = isPortrait(tileDirection) ? 14 : 16;
+      final image = getTileImage(tile, tileDirection);
+
+      if (stepMode != 2) {
+        if (direction == 3) baseColPos += tileThickness;
+      }
+
+      final posOffset = offsetDrawAddKan(direction, image, stepMode, tileThickness);
+      final colPos = baseColPos + posOffset.dx;
+      var rowPos = baseRowPos + posOffset.dy;
+
+      final drawPos = isPortrait(direction)
+          ? Offset(colPos, rowPos)
+          : Offset(rowPos, colPos);
+      drawObjects.add(DrawObject(image, drawPos, false));
+
+      if (stepMode != 1) {
+        baseColPos += stepColForDrawPongChow(direction, image, tileThickness);
+        if (direction == 1) baseColPos += -tileThickness;
+      }
+    }
+
+    return isPortrait(direction)
+        ? Offset(baseColPos, baseRowPos)
+        : Offset(baseRowPos, baseColPos);
+  }
+
+  Offset drawCalledTilesOpenKanPerDirection(List<DrawObject> drawObjects,
+      game.CalledTiles tiles, int direction, Offset baseOffset) {
+    final peerId = _tableData.playerDataMap.keys.toList()[direction];
+    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
+    assert(callDirection != 0);
+
+    final calledTileDirection = (direction + 1) % 4;
+    final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
+    tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
+    tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
+    tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
+    if (callDirection == 3) {
+      tileDirectionMap.add([calledTileDirection, tiles.calledTile, 0]);
+    } else {
+      tileDirectionMap
+          .insert(callDirection - 1, [calledTileDirection, tiles.calledTile, 0]);
+    }
 
     var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
     var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
