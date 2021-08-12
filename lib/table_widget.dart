@@ -1,14 +1,15 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 
 import 'package:web_app_sample/game_controller.dart' as game;
+import 'name_set_dialog.dart';
+import 'table_controller.dart' as tbl;
 import 'package:web_app_sample/tiles_painter.dart';
 
 class GameTableWidget extends StatefulWidget {
-  const GameTableWidget({Key? key}) : super(key: key);
+  const GameTableWidget({Key? key, required this.roomId}) : super(key: key);
+
+  final String roomId;
 
   @override
   _GameTableWidgetState createState() => _GameTableWidgetState();
@@ -16,93 +17,71 @@ class GameTableWidget extends StatefulWidget {
 
 class _GameTableWidgetState extends State<GameTableWidget> {
   final Map<String, ui.Image> _imageMap = {};
-  final Map<String, ui.Image> _imageMap2 = {};
-
-  late TileImages _tileImages;
-  late game.Table _table;
-  final _members = <String, String>{
-    "AAAA": "Name1",
-    "BBBB": "Name2",
-    "CCCC": "Name3",
-    "DDDD": "Name4",
-  };
+  late game.Game _game;
+  late game.State _lastState;
 
   @override
   void initState() {
     super.initState();
-    _tileImages = TileImages(onTileImageLoaded);
-    _table = game.Table(_members);
-    int playerIndex = 0;
-    final keyList = _table.playerDataMap.keys.toList();
-    _table.myPeerId = keyList[playerIndex];
+    final _tileImages = TileImages(onTileImageLoaded);
+    _game = game.Game(widget.roomId, onChangeTableState);
+    _lastState = _game.state;
+  }
 
-    _table.deadWallTiles.add(0);
-    _table.deadWallTiles.add(1);
-    _table.deadWallTiles.add(2);
-    _table.deadWallTiles.add(3);
-    _table.deadWallTiles.add(4);
-    _table.deadWallTiles.add(5);
-    _table.deadWallTiles.add(6);
-    _table.deadWallTiles.add(7);
-    _table.deadWallTiles.add(8);
-    _table.deadWallTiles.add(9);
+  void onChangeTableState() {
+    setState(() {});
+    if (_lastState != _game.state) {
+      if (_game.state == game.State.onSettingMyName) {
+        _setMyName();
+      }
+    }
+    _lastState = _game.state;
+  }
 
-    final data = _table.playerDataMap[_table.myPeerId]!;
-    data.discardedTiles.add(0);
-    data.discardedTiles.add(1);
-    data.discardedTiles.add(2);
-    data.discardedTiles.add(3);
-    data.discardedTiles.add(4);
-    data.discardedTiles.add(5);
-    data.discardedTiles.add(6);
-    data.discardedTiles.add(7);
-    data.discardedTiles.add(8);
-    data.discardedTiles.add((9 * 4) * 1 + 0);
-    data.discardedTiles.add((9 * 4) * 1 + 1);
-    data.discardedTiles.add((9 * 4) * 2 + 0);
-    data.discardedTiles.add((9 * 4) * 2 + 1);
-
-    data.riichiTile.add(4);
-
-    data.tiles.add(0);
-    data.tiles.add(1);
-    data.tiles.add(2);
-    data.tiles.add(3);
-    data.tiles.add(4);
-    data.tiles.add(5);
-    data.tiles.add(6);
-    data.tiles.add(7);
-    data.tiles.add(8);
-    data.tiles.add(9);
-    data.tiles.add(10);
-    data.tiles.add(11);
-    data.tiles.add(12);
-
-    data.drewTile.add(12);
-
-    for (var direction = 0; direction < 4; direction++) {
-      final other = (playerIndex + direction) % 4;
-      final data = _table.playerDataMap[keyList[other]]!;
-
-      data.calledTiles.add(game.CalledTiles(
-          11, keyList[(other + 3) % 4], [36 + 6, 36 + 8], "pong"));
-      data.calledTiles.add(game.CalledTiles(
-          12, keyList[(other + 3) % 4], [12, 12, 12], "late-kan"));
-      data.calledTiles.add(game.CalledTiles(
-          16, keyList[(other + 1) % 4], [36 + 6, 36 + 8], "pong"));
+  Future<void> _setMyName() async {
+    while (true) {
+      final name = await NameSetDialog.show(context, _game.myName());
+      if (name != null) {
+        _game.setMyName(name);
+        return;
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return buildBody();
-  }
-
-  Widget buildBody() {
     if (_imageMap.isEmpty) {
+      return buildWaitingView("Loading images.");
+    }
+    if (_game.state == game.State.onCreatingMyPeer) {
+      return buildWaitingView("Creating my peer.");
+    }
+    if (_game.state == game.State.onJoiningRoom) {
+      return buildWaitingView("Creating a game room.");
+    }
+    if (_game.state == game.State.onSettingMyName) {
+      return buildWaitingView("Setting my player name.");
+    }
+    if (_game.state == game.State.onWaitingOtherPlayersForStart) {
+      return buildWaitingView("Waiting other players.");
+    }
+
+    if (_game.state == game.State.onGame) {
       return const CircularProgressIndicator();
     }
 
+    return buildBody();
+  }
+
+  Widget buildWaitingView(String message) {
+    return Scaffold(
+      body: Center(
+          child: Column(
+              children: [Text(message), const CircularProgressIndicator()])),
+    );
+  }
+
+  Widget buildBody() {
     return Column(
       children: [
         Container(
@@ -110,20 +89,84 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           width: 700,
           height: 700,
           child: CustomPaint(
-            painter: TablePainter(_table, _imageMap),
+            painter: TablePainter(_game.myPeerId, _game.table, _imageMap),
           ),
         ),
-        Row(
-          children: myTiles(),
-        )
+        SizedBox(
+            width: 700,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: drawable(),
+            )),
       ],
     );
+  }
+
+  // State:
+  // nowSetup
+  // callableFromOther
+  // selectingTilesForPong
+  // selectingTilesForChow
+  // selectingTilesForOpenKan
+  // finishingForLon
+  // waitToDiscardOther
+  // drawable
+  // callableOnSelf
+  // callableOnSelfInRiiching
+  // selectingTilesForCloseKan
+  // selectingTilesForLateKan
+  // selectingTileForDiscard
+  // finishingForTumo
+  List<Widget> buildRibbonForCallableFromOther() {
+    final widgets = <Widget>[];
+    widgets
+        .add(FloatingActionButton(child: const Text('ポン'), onPressed: () {}));
+    widgets
+        .add(FloatingActionButton(child: const Text('チー'), onPressed: () {}));
+    widgets
+        .add(FloatingActionButton(child: const Text('カン'), onPressed: () {}));
+    widgets
+        .add(FloatingActionButton(child: const Text('ロン'), onPressed: () {}));
+    return widgets;
+  }
+
+  List<Widget> buildRibbonForSelectingTilesForPong() {
+    return myTiles();
+  }
+
+  List<Widget> drawable() {
+    final widgets = <Widget>[];
+    widgets
+        .add(FloatingActionButton(child: const Text('ドロー'), onPressed: () {}));
+    return widgets;
+  }
+
+  List<Widget> callableOnSelf() {
+    final widgets = <Widget>[];
+    widgets
+        .add(FloatingActionButton(child: const Text('カン'), onPressed: () {}));
+    widgets
+        .add(FloatingActionButton(child: const Text('リーチ'), onPressed: () {}));
+    widgets
+        .add(FloatingActionButton(child: const Text('ツモ'), onPressed: () {}));
+    return widgets;
+  }
+
+  List<Widget> callableOnSelfInRiiching() {
+    final widgets = <Widget>[];
+    widgets
+        .add(FloatingActionButton(child: const Text('カン'), onPressed: () {}));
+    widgets
+        .add(FloatingActionButton(child: const Text('リーチ'), onPressed: null));
+    widgets
+        .add(FloatingActionButton(child: const Text('ツモ'), onPressed: () {}));
+    return widgets;
   }
 
   List<Widget> myTiles() {
     final widgets = <Widget>[];
     const scale = 0.8;
-    for (final tile in _table.myData().tiles) {
+    for (final tile in _game.table.playerData(_game.myPeerId).tiles) {
       widgets.add(
         Ink.image(
           image: Image.asset(tileToImageFileUrl(tile), scale: scale).image,
@@ -140,7 +183,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   }
 
   String tileToImageFileUrl(int tile) {
-    final info = TileInfo(tile);
+    final info = tbl.TileInfo(tile);
     if (info.type == 0) {
       return "images/manzu_all/p_ms${info.number + 1}_0.gif";
     }
@@ -164,13 +207,14 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 }
 
 class TablePainter extends CustomPainter {
-  TablePainter(this._tableData, this._imageMap) {
-    _tilesPainter = TilesPainter(_tableData, _imageMap);
+  TablePainter(this._myPeerId, this._tableData, this._imageMap) {
+    _tilesPainter = TilesPainter(_myPeerId, _tableData, _imageMap);
   }
 
   late TilesPainter _tilesPainter;
-  final game.Table _tableData; // <PeerId, プレイヤーデータ> 親順ソート済み
   final Map<String, ui.Image> _imageMap;
+  final String _myPeerId;
+  final tbl.Table _tableData;
 
   @override
   void paint(Canvas canvas, Size size) {

@@ -35,9 +35,72 @@
        https://developers.google.com/web/fundamentals/primers/service-workers -->
   <script src="https://cdn.webrtc.ecl.ntt.com/skyway-4.4.1.js"></script>
   <script>
-    function wrapperNewPeer(callback) {
-        callback("AAA");
-        return
+    let peer;
+    let room;
+    let remoteAudioMap = {};
+
+    function newPeer(key, debug, onOpenCallback) {
+      peer = new Peer({key: key, debug: debug});
+      peer.once('open', id => onOpenCallback(id));
+      return;
+    }
+
+    function joinRoom(roomId, mode,
+                      onOpenCallback,
+                      onPeerJoinCallback,
+                      onStreamCallback,
+                      onDataCallback,
+                      onPeerLeave,
+                      onClose) {
+      room = peer.joinRoom(roomId, {
+        mode: mode,
+        // stream: localStream,
+      });
+
+      room.once('open', () => {
+        onOpenCallback();
+      });
+
+      room.on('peerJoin', peerId => {
+        onPeerJoinCallback(peerId);
+      });
+
+      room.on('stream', async stream => {
+        onStreamCallback();
+        const remoteAudio = new Audio();
+        remoteAudioMap[stream.peerId] = remoteAudio;
+        remoteAudio.srcObject = stream;
+        await remoteAudio.play().catch(console.error);
+      });
+
+      room.on('data', ({ data, src }) => {
+        onDataCallback(data, src);
+      });
+
+      room.on('peerLeave', peerId => {
+        const remoteAudio = remoteAudioMap[stream.peerId];
+        remoteAudio.srcObject.getTracks().forEach(track => track.stop());
+        remoteAudio.srcObject = null;
+        onPeerLeave(peerId);
+      });
+
+      // for closing(leaving) myself
+      room.once('close', () => {
+        for (let key in remoteAudioMap) {
+          const remoteAudio = remoteAudioMap[key];
+          remoteAudio.srcObject.getTracks().forEach(track => track.stop());
+          remoteAudio.srcObject = null;
+          onClose();
+        }
+      });
+    }
+
+    function sendData(data) {
+      room.send(data);
+    }
+
+    function leaveRoom() {
+      room.close();
     }
   </script>
 

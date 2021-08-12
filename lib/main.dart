@@ -1,3 +1,4 @@
+import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:web_app_sample/table_widget.dart';
 
@@ -13,58 +14,32 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      onGenerateRoute: RouteGenerator.generateRoute,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: GameTableWidget(roomId: const Uuid().v4()),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
-  final String title;
+class RouteGenerator {
+  static Route<dynamic>? generateRoute(RouteSettings settings) {
+    print(
+        "generateRoute: name=${settings.name}, arguments=${settings.arguments}");
 
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
+    final paths = settings.name!.split('?');
+    final path = paths[0];
+    final queryParameters = Uri.splitQueryString(paths[1]);
 
-class _MyHomePageState extends State<MyHomePage> {
-  @override
-  void initState() {
-    super.initState();
-  }
+    final String roomId = queryParameters["roomId"] ?? const Uuid().v4();
 
-  void pass(){}
-  Widget _buildElevatedButton(String text, Function() func){
-    return ElevatedButton(
-      child: Text(text),
-      style: ElevatedButton.styleFrom(
-        primary: Colors.orange,
-        onPrimary: Colors.white,
-      ),
-      onPressed: func,
-    );
-  }
+    switch (path) {
+      case '/':
+        return MaterialPageRoute(
+            builder: (_) => GameTableWidget(roomId: roomId));
+    }
 
-  Widget _buildNewGamePage() {
-    return Center(
-        child: Column(children: [
-          _buildElevatedButton("New Game", pass),
-          _buildElevatedButton("Join Room", pass),
-        ])
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final Size size = MediaQuery.of(context).size;
-    print(size);
-    return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
-        body: GameTableWidget() //Image.asset("images/manzu_all/p_ms1_0.gif") // This trailing comma makes auto-formatting nicer for build methods.
-    );
+    return null;
   }
 }

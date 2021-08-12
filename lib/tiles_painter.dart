@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:web_app_sample/game_controller.dart' as game;
+import 'table_controller.dart' as tbl;
 import 'dart:ui' as ui;
 
 class TileImages {
@@ -30,7 +30,7 @@ class TileImages {
         if (direction == 4) converted = 3;
 
         final key = '${tileType}_${i}_${converted}';
-        final url = 'images/${prefix}${i + 1}_${direction}.gif';
+        final url = 'assets/images/${prefix}${i + 1}_${direction}.gif';
         // print(url);
         rootBundle.load(url).then((data) {
           ui.decodeImageFromList(data.buffer.asUint8List(), (ui.Image img) {
@@ -53,25 +53,6 @@ class TileImages {
   }
 }
 
-class TileInfo {
-  TileInfo(int tileId) {
-    if (tileId < 0) {
-      type = 4;
-      number = 0;
-    } else {
-      const tilesQuantityWithOutTupai = 4 * 9 * 3;
-      final tupai = tileId > tilesQuantityWithOutTupai;
-      type = tupai ? 3 : tileId ~/ (4 * 9); // 0:萬子, 1:筒子, 2,:索子, 3:字牌
-      number = tupai
-          ? (tileId - tilesQuantityWithOutTupai) % 7
-          : tileId % 9; // 萬子, 筒子, 索子:9種 字牌: 7種
-    }
-  }
-
-  late int type; // 0:萬子, 1:筒子, 2,:索子, 3:字牌, 4:伏牌
-  late int number; // [萬子, 筒子, 索子]: 9種, [字牌]: 7種, [伏牌] 1種
-}
-
 class DrawObject {
   DrawObject(this.image, this.pos, this.isCalled);
   final ui.Image image;
@@ -80,12 +61,13 @@ class DrawObject {
 }
 
 class TilesPainter {
-  TilesPainter(this._tableData, this._imageMap);
+  TilesPainter(this.myPeerId, this._tableData, this._imageMap);
 
-  final game.Table _tableData; // <PeerId, プレイヤーデータ> 親順ソート済み
+  final String myPeerId;
+  final tbl.Table _tableData; // <PeerId, プレイヤーデータ> 親順ソート済み
   final Map<String, ui.Image> _imageMap;
 
-  void drawDiscardTiles(Canvas canvas, Size size, game.PlayerData data) {
+  void drawDiscardTiles(Canvas canvas, Size size, tbl.PlayerData data) {
     final drawObjects = <DrawObject>[];
 
     const centerSize = 33 * 3 * 1.0;
@@ -151,7 +133,7 @@ class TilesPainter {
   }
 
   void drawDiscardTilesPerDirection(List<DrawObject> drawObjects,
-      game.PlayerData data, int direction, Offset originOffset) {
+      tbl.PlayerData data, int direction, Offset originOffset) {
     final baseColPos =
     isPortrait(direction) ? originOffset.dx : originOffset.dy;
     final baseRowPos =
@@ -191,7 +173,7 @@ class TilesPainter {
 
     final keyList = _tableData.playerDataMap.keys.toList();
 
-    final baseDirection = keyList.indexOf(_tableData.myPeerId);
+    final baseDirection = keyList.indexOf(myPeerId);
     for (var direction = 0; direction < 4; direction++) {
       final index = (baseDirection + direction) % 4;
       final data = _tableData.playerDataMap[keyList[index]]!;
@@ -225,7 +207,7 @@ class TilesPainter {
   }
 
   void drawCalledTilesPerDirection(List<DrawObject> drawObjects,
-      game.PlayerData data, int direction, Offset baseOffset) {
+      tbl.PlayerData data, int direction, Offset baseOffset) {
     for (var index = 0; index < data.calledTiles.length; index++) {
       final tiles = data.calledTiles[index];
       baseOffset = drawCalledTilesPerDirection2(
@@ -254,11 +236,13 @@ class TilesPainter {
       return base;
     }
 
-    if (direction == 0)
+    if (direction == 0) {
       return base.translate(0, -image.height.toDouble() + tileThickness);
+    }
     if (direction == 1) return base.translate(0, -image.width.toDouble());
-    if (direction == 2)
+    if (direction == 2) {
       return base.translate(0, image.height.toDouble() - tileThickness);
+    }
     if (direction == 3) return base.translate(0, image.width.toDouble());
     assert(false);
     return const Offset(0, 0);
@@ -274,7 +258,7 @@ class TilesPainter {
   }
 
   List<List<int>> createCalledTileDirectionMap(
-      game.CalledTiles tiles,
+      tbl.CalledTiles tiles,
       int direction,
       ) {
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
@@ -322,7 +306,7 @@ class TilesPainter {
   }
 
   Offset drawCalledTilesPerDirection2(List<DrawObject> drawObjects,
-      game.CalledTiles tiles, int direction, Offset baseOffset) {
+      tbl.CalledTiles tiles, int direction, Offset baseOffset) {
     final tileDirectionMap = createCalledTileDirectionMap(tiles, direction);
     var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
     var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
@@ -388,7 +372,7 @@ class TilesPainter {
     }
   }
 
-  void drawMyWall(Canvas canvas, Size size, game.PlayerData data) {
+  void drawMyWall(Canvas canvas, Size size, tbl.PlayerData data) {
     final drawObjects = <DrawObject>[];
     const tileDirection = 4;
 
@@ -404,9 +388,9 @@ class TilesPainter {
       drawObjects.add(DrawObject(image, drawPos, false));
     }
 
-    assert(data.drewTile.length<=1);
-    for (var i=0; i<data.drewTile.length; i++) {
-      final image = getTileImage(data.drewTile[i], tileDirection);
+    assert(data.drawnTile.length<=1);
+    for (var i=0; i<data.drawnTile.length; i++) {
+      final image = getTileImage(data.drawnTile[i], tileDirection);
       final drawPos = baseOffset.translate(data.tiles.length * tileWidth + 10, -tileHeight);
       drawObjects.add(DrawObject(image, drawPos, false));
     }
@@ -420,17 +404,17 @@ class TilesPainter {
 
   ui.Image getTileImage(int tile, direction) {
     // direction = 0: 打牌(上向, 1: 打牌(左向, 2: 打牌(下向, 3: 打牌(右向, 4: 自牌(上向,
-    final info = TileInfo(tile);
+    final info = tbl.TileInfo(tile);
     final key = "${info.type}_${info.number}_${direction}";
     final image = _imageMap[key]!;
     return image;
   }
 
   void paint(Canvas canvas, Size size) {
-    drawDiscardTiles(canvas, size, _tableData.myData());
+    drawDiscardTiles(canvas, size, _tableData.playerData(myPeerId));
     drawCalledTiles(canvas, size);
     drawDeadWall(canvas, size);
-    drawMyWall(canvas, size, _tableData.myData());
+    drawMyWall(canvas, size, _tableData.playerData(myPeerId));
 
     final paint = Paint();
     canvas.drawLine(
