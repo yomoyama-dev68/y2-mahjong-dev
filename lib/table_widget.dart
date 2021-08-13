@@ -7,9 +7,11 @@ import 'table_controller.dart' as tbl;
 import 'package:web_app_sample/tiles_painter.dart';
 
 class GameTableWidget extends StatefulWidget {
-  const GameTableWidget({Key? key, required this.roomId}) : super(key: key);
+  const GameTableWidget({Key? key, required this.roomId, this.playerName})
+      : super(key: key);
 
   final String roomId;
+  final String? playerName;
 
   @override
   _GameTableWidgetState createState() => _GameTableWidgetState();
@@ -22,6 +24,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   @override
   void initState() {
+    print("_GameTableWidgetState:initState");
     super.initState();
     final _tileImages = TileImages(onTileImageLoaded);
     _game = game.Game(widget.roomId, onChangeTableState);
@@ -30,15 +33,20 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   void onChangeTableState() {
     setState(() {});
+    print("onChangeTableState ${_game.myName()} ${_game.state}");
     if (_lastState != _game.state) {
+      _lastState = _game.state;
       if (_game.state == game.State.onSettingMyName) {
         _setMyName();
       }
     }
-    _lastState = _game.state;
   }
 
   Future<void> _setMyName() async {
+    if (widget.playerName != null) {
+      _game.setMyName(widget.playerName!);
+      return;
+    }
     while (true) {
       final name = await NameSetDialog.show(context, _game.myName());
       if (name != null) {
@@ -66,19 +74,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       return buildWaitingView("Waiting other players.");
     }
 
-    if (_game.state == game.State.onGame) {
-      return const CircularProgressIndicator();
-    }
-
     return buildBody();
   }
 
   Widget buildWaitingView(String message) {
-    return Scaffold(
-      body: Center(
-          child: Column(
-              children: [Text(message), const CircularProgressIndicator()])),
-    );
+    return Column(children: [Text(message), const CircularProgressIndicator()]);
   }
 
   Widget buildBody() {
@@ -93,30 +93,51 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           ),
         ),
         SizedBox(
-            width: 700,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: drawable(),
-            )),
+          width: 700,
+          child: buildRibbon(),
+        ),
       ],
     );
   }
 
-  // State:
-  // nowSetup
-  // callableFromOther
-  // selectingTilesForPong
-  // selectingTilesForChow
-  // selectingTilesForOpenKan
-  // finishingForLon
-  // waitToDiscardOther
-  // drawable
-  // callableOnSelf
-  // callableOnSelfInRiiching
-  // selectingTilesForCloseKan
-  // selectingTilesForLateKan
-  // selectingTileForDiscard
-  // finishingForTumo
+  Widget buildRibbon() {
+    final tblState = _game.table.state;
+    if (tblState == tbl.TableState.notSetup ||
+        tblState == tbl.TableState.doingSetupHand) {
+      return const Text("セットアップなう");
+    }
+
+    if (tblState == tbl.TableState.drawable) {
+      final widgets = _game.myPeerId == _game.table.turnedPeerId
+          ? buildRibbonForDrawable()
+          : buildRibbonForCallableFromOther();
+      return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: widgets);
+    }
+
+    if (tblState == tbl.TableState.waitToDiscard) {
+      final widgets = _game.myPeerId == _game.table.turnedPeerId
+          ? buildRibbonForWaitingSelfDiscard()
+          : buildRibbonForWaitingOtherDiscard();
+      return Column(children: [
+        Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: widgets),
+        buildMyWallRibbon()
+      ]);
+    }
+
+    return const Text("エラー：想定していない状態が発生しました。");
+  }
+
+  List<Widget> buildRibbonForDrawable() {
+    final widgets = <Widget>[];
+    widgets.add(FloatingActionButton(
+        child: const Text('ドロー'),
+        onPressed: _game.canCommand() ? () => _game.drawTile() : null));
+    return widgets;
+  }
+
   List<Widget> buildRibbonForCallableFromOther() {
     final widgets = <Widget>[];
     widgets
@@ -130,18 +151,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     return widgets;
   }
 
-  List<Widget> buildRibbonForSelectingTilesForPong() {
-    return myTiles();
-  }
-
-  List<Widget> drawable() {
-    final widgets = <Widget>[];
-    widgets
-        .add(FloatingActionButton(child: const Text('ドロー'), onPressed: () {}));
-    return widgets;
-  }
-
-  List<Widget> callableOnSelf() {
+  List<Widget> buildRibbonForWaitingSelfDiscard() {
     final widgets = <Widget>[];
     widgets
         .add(FloatingActionButton(child: const Text('カン'), onPressed: () {}));
@@ -151,6 +161,15 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         .add(FloatingActionButton(child: const Text('ツモ'), onPressed: () {}));
     return widgets;
   }
+
+  List<Widget> buildRibbonForWaitingOtherDiscard() {
+    final turnedPlayer = _game.member[_game.table.turnedPeerId];
+    final message = turnedPlayer == null
+        ? "エラー：想定していない状態が発生しました。"
+        : "${turnedPlayer}さんの打牌を待っています。";
+    return [Text(message)];
+  }
+
 
   List<Widget> callableOnSelfInRiiching() {
     final widgets = <Widget>[];
@@ -163,23 +182,50 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     return widgets;
   }
 
-  List<Widget> myTiles() {
-    final widgets = <Widget>[];
-    const scale = 0.8;
-    for (final tile in _game.table.playerData(_game.myPeerId).tiles) {
-      widgets.add(
-        Ink.image(
-          image: Image.asset(tileToImageFileUrl(tile), scale: scale).image,
-          height: 59.0 / scale,
-          width: 33.0 / scale,
-          child: InkWell(
-            onTap: () {},
-            child: SizedBox(),
-          ),
+  final selectingTiles = <int>[];
+
+  void onTapTile(int tile) {
+    final tblState = _game.table.state;
+
+    if (tblState == tbl.TableState.waitToDiscard) {
+      if (selectingTiles.isEmpty) {
+        selectingTiles.add(tile);
+      } else {
+        _game.discardTile(tile);
+        selectingTiles.clear();
+      }
+    }
+  }
+
+  Widget buildMyWallRibbon() {
+    final myData = _game.table.playerData(_game.myPeerId);
+    if (myData == null) {
+      return const Text("エラー：想定していない状態が発生しました。");
+    }
+
+    Widget buildTappableTile(int tile) {
+      const scale = 0.8;
+      return Ink.image(
+        image: Image.asset(tileToImageFileUrl(tile), scale: scale).image,
+        height: 59.0 / scale,
+        width: 33.0 / scale,
+        child: InkWell(
+          onTap: () => onTapTile(tile),
+          child: SizedBox(),
         ),
       );
     }
-    return widgets;
+
+    final widgets = <Widget>[];
+    for (final tile in myData.tiles) {
+      widgets.add(buildTappableTile(tile));
+    }
+
+    return SingleChildScrollView(
+        child: Row(
+          children: widgets,
+        ),
+        scrollDirection: Axis.horizontal);
   }
 
   String tileToImageFileUrl(int tile) {

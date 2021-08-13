@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'table_controller.dart';
-import 'wrapper.dart' as wrapper;
+import 'skyway_wrapper.dart' as wrapper;
 import 'commad_handler.dart';
 
 const skyWayKey = '05bd41ee-71ec-4d8b-bd68-f6b7e1172b76';
@@ -20,12 +20,13 @@ enum State {
 class Game {
   Game(this.roomId, this.onChangedState) {
     table = Table(_tableOnUpdateTable);
-    wrapper.newPeer(skyWayKey, 3, (peerId) {
+    skyWay.newPeer(skyWayKey, 3, (peerId) {
       print("newPeer ${peerId}");
+      _commandHandler = CommandHandler(skyWay);
       myPeerId = peerId;
-      state = State.onSettingMyName;
+      state = State.onJoiningRoom;
       onChangedState();
-      wrapper.joinRoom(
+      skyWay.joinRoom(
           roomId,
           roomMode,
           _skyWayOnOpen,
@@ -37,12 +38,13 @@ class Game {
     });
   }
 
+  final skyWay = wrapper.SkyWayHelper(useStab: true);
   final roomId;
   final Function onChangedState;
   final member = <String, String>{};
   late String myPeerId;
   late Table table;
-  final _commandHandler = CommandHandler();
+  late CommandHandler _commandHandler;
 
   State state = State.onCreatingMyPeer;
 
@@ -51,23 +53,30 @@ class Game {
   }
 
   void setMyName(String name) {
+    print("setMyName: ${myPeerId}, ${name}");
+    state = State.onWaitingOtherPlayersForStart;
     _onUpdateMemberMap(myPeerId, name);
     final tmp = <String, dynamic>{
       "type": "notifyMyName",
       "name": name,
     };
-    wrapper.sendData(jsonEncode(tmp));
-    state = State.onWaitingOtherPlayersForStart;
+    skyWay.sendData(jsonEncode(tmp));
     onChangedState();
   }
 
+  bool canCommand() {
+    return _commandHandler.canCommand();
+  }
+
   Future<void> drawTile() async {
+    print("drawTile(): ${myPeerId}, ${_isOwner()}");
     if (_isOwner()) {
       final result = table.handleDrawTileCmd(myPeerId);
       _handleCommandResult(result);
     } else {
       _commandHandler
           .sendCommand(myPeerId, {"command": "drawTile"}).then((result) {
+        print("drawTile(): result: ${result}");
         _handleCommandResult(result);
       });
     }
@@ -86,7 +95,9 @@ class Game {
   }
 
   void _skyWayOnOpen() {
+    print("_skyWayOnOpen: $myPeerId");
     state = State.onSettingMyName;
+    onChangedState();
   }
 
   void _skyWayOnPeerJoin(String peerId) {
@@ -134,6 +145,7 @@ class Game {
   }
 
   void _skyWayOnUpdateTable(Map<String, dynamic> tableData) {
+    print("_skyWayOnUpdateTable: ${myName()} ${tableData}");
     table.applyData(tableData);
     onChangedState();
   }
@@ -148,7 +160,6 @@ class Game {
   void _startGame() {
     table.startGame(member);
     table.nextLeader();
-    onChangedState();
   }
 
   void _skyWayOnReceiveCommand(Map<String, dynamic> data) {
@@ -169,28 +180,35 @@ class Game {
   }
 
   void _handleCommandResult(CommandResult result) {
+    print("_handleCommandResult: ${result.message}");
     onChangedState();
   }
 
   // caller:self or skyWay
   void _onUpdateMemberMap(String peerId, String name) {
     member[peerId] = name;
+    print("_onUpdateMemberMap: ${myName()}: ${member.length}");
     if (member.length == 4) {
       if (state == State.onWaitingOtherPlayersForStart) {
         state = State.onGame;
-        if (_isOwner()) _startGame();
+        if (_isOwner()) {
+          print("_onUpdateMemberMap: ${myName()} _isOwner. startGame");
+          _startGame();
+        }
       }
     }
+
     onChangedState();
   }
 
   void _tableOnUpdateTable() {
-    onChangedState();
-
     final tmp = <String, dynamic>{
       "type": "updateTableData",
       "data": table.toMap(),
     };
-    wrapper.sendData(jsonEncode(tmp));
+    // print("_tableOnUpdateTable: ${myName()}: ${jsonEncode(tmp)}");
+
+    skyWay.sendData(jsonEncode(tmp));
+    onChangedState();
   }
 }

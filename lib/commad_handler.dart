@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'wrapper.dart' as wrapper;
+import 'skyway_wrapper.dart' as wrapper;
 
 enum CommandResultStateCode {
   ok,
@@ -27,7 +27,13 @@ class CommandResult {
 }
 
 class CommandHandler {
+  CommandHandler(this.skyWay);
+  final wrapper.SkyWayHelper skyWay;
   final _completerMap = <int, Completer<CommandResult>>{};
+
+  bool canCommand() {
+    return _completerMap.isEmpty;
+  }
 
   Future<CommandResult> sendCommand(
       String commanderPeerId, Map<String, dynamic> command) {
@@ -40,7 +46,7 @@ class CommandHandler {
     tmp.addAll(command);
     final completer = Completer<CommandResult>();
     _completerMap[timestamp] = completer;
-    wrapper.sendData(jsonEncode(tmp));
+    skyWay.sendData(jsonEncode(tmp));
     return completer.future;
   }
 
@@ -53,7 +59,7 @@ class CommandHandler {
       "resultTimestamp": DateTime.now().millisecondsSinceEpoch,
       "result": result.toMap(),
     };
-    wrapper.sendData(jsonEncode(tmp));
+    skyWay.sendData(jsonEncode(tmp));
   }
 
   void onReceiveCommandResult(Map<String, dynamic> data, String myPeerId) {
@@ -61,10 +67,10 @@ class CommandHandler {
     if (peerId != myPeerId) return;
     final commandTimestamp = data["commandTimestamp"] as int;
     final resultTimestamp = data["resultTimestamp"] as int;
-    final resultJsonMap = jsonDecode(data["result"]) as Map<String, dynamic>;
+    final resultJsonMap = data["result"] as Map<String, dynamic>;
     final result = CommandResult.fromJsonMap(resultJsonMap);
 
-    final completer = _completerMap[commandTimestamp];
+    final completer = _completerMap.remove(commandTimestamp);
     if (completer != null) completer.complete(result);
   }
 }

@@ -1,6 +1,6 @@
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
-import 'package:web_app_sample/table_widget.dart';
+import 'package:web_app_sample/top_widget.dart';
 
 void main() {
   runApp(const MyApp());
@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: GameTableWidget(roomId: const Uuid().v4()),
+      home: TopWidget(roomId: const Uuid().v4()),
     );
   }
 }
@@ -37,7 +37,7 @@ class RouteGenerator {
     switch (path) {
       case '/':
         return MaterialPageRoute(
-            builder: (_) => GameTableWidget(roomId: roomId));
+            builder: (_) => TopWidget(roomId: roomId));
     }
 
     return null;

@@ -1,4 +1,16 @@
+import 'dart:io';
+
 import 'commad_handler.dart';
+
+_toListInt(List<dynamic> obj) {
+  return (obj).map((e) => e as int).toList();
+}
+
+_toListCalledTiles(List<dynamic> obj) {
+  return (obj)
+      .map((e) => CalledTiles.fromJsonMap(e as Map<String, dynamic>))
+      .toList();
+}
 
 class TileInfo {
   TileInfo(int tileId) {
@@ -58,15 +70,12 @@ class PlayerData {
   factory PlayerData.fromJsonMap(Map<String, dynamic> map) {
     final data = PlayerData(map["name"]);
     data.score = map["score"] as int;
-    data.drawnTile.addAll(map["drawnTile"] as List<int>);
-    data.tiles.addAll(map["tiles"] as List<int>);
-    data.discardedTiles.addAll(map["discardedTiles"] as List<int>);
-    final calledTiles = (map["calledTiles"] as List<Map<String, dynamic>>)
-        .toList()
-        .map((e) => CalledTiles.fromJsonMap(e));
-    data.calledTiles.addAll(calledTiles);
-    data.calledTilesByOther.addAll(map["calledTilesByOther"] as List<int>);
-    data.calledTilesByOther.addAll(map["calledTilesByOther"] as List<int>);
+    data.tiles.addAll(_toListInt(map["tiles"]));
+    data.drawnTile.addAll(_toListInt(map["drawnTile"]));
+    data.discardedTiles.addAll(_toListInt(map["discardedTiles"]));
+    data.calledTiles.addAll(_toListCalledTiles(map["calledTiles"]));
+    data.calledTilesByOther.addAll(_toListInt(map["calledTilesByOther"]));
+    data.calledTilesByOther.addAll(_toListInt(map["calledTilesByOther"]));
     return data;
   }
 
@@ -95,6 +104,22 @@ class PlayerData {
   }
 }
 
+class TableState {
+  static const notSetup = "notSetup";
+  static const doingSetupHand = "doingSetupHand";
+  static const doneSetupHand = "doneSetupHand";
+
+  static const drawable = "drawable";
+  static const waitToDiscard = "waitToDiscard";
+
+  static const selectingTilesForPong = "selectingTilesForPong";
+  static const selectTilesForChow = "selectTilesForChow";
+  static const waitToDiscardForPongOrChow = "waitToDiscardForPongOrChow";
+
+  static const selectingTilesForOpenKan = "selectingTilesForOpenKan";
+}
+
+
 class TableData {
   // 荘中関連
   Map<String, PlayerData> playerDataMap = {}; // 親順ソート済み
@@ -102,7 +127,7 @@ class TableData {
   int leaderContinuousCount = 0; // 場数（親継続数）
 
   // 局中関連
-  String state = "";
+  String state = TableState.notSetup;
   String turnedPeerId = "";
   List<int> wallTiles = []; // 山牌　tile: 牌
   List<int> deadWallTiles = []; // 王牌
@@ -136,18 +161,18 @@ class TableData {
     playerDataMap = (map["playerDataMap"] as Map<String, dynamic>)
         .map((key, value) => MapEntry(key, PlayerData.fromJsonMap(value)));
 
-    leaderChangeCount = map["leaderChangeCount"];
-    leaderContinuousCount = map["leaderContinuousCount"];
+    leaderChangeCount = map["leaderChangeCount"] as int;
+    leaderContinuousCount = map["leaderContinuousCount"] as int;
 
-    state = map["state"];
-    turnedPeerId = map["turnedPeerId"];
-    wallTiles = map["wallTiles"];
-    deadWallTiles = map["deadWallTiles"];
-    replacementTiles = map["replacementTiles"];
+    state = map["state"] as String;
+    turnedPeerId = map["turnedPeerId"] as String;
+    wallTiles = _toListInt(map["wallTiles"]);
+    deadWallTiles = _toListInt(map["deadWallTiles"]);
+    replacementTiles = _toListInt(map["replacementTiles"]);
 
-    lastDiscardedTile = map["lastDiscardedTile"];
-    lastDiscardedPlayerPeerID = map["lastDiscardedPlayerPeerID"];
-    countOfKan = map["countOfKan"];
+    lastDiscardedTile = map["lastDiscardedTile"] as int;
+    lastDiscardedPlayerPeerID = map["lastDiscardedPlayerPeerID"] as String;
+    countOfKan = map["countOfKan"] as int;
   }
 
   List<String> idList() {
@@ -168,8 +193,8 @@ class TableData {
     return index1 - index0; // 0:自分, 1:右, 2:対面, 3:左
   }
 
-  PlayerData playerData(String peerId) {
-    return playerDataMap[peerId]!;
+  PlayerData? playerData(String peerId) {
+    return playerDataMap[peerId];
   }
 }
 
@@ -214,19 +239,22 @@ class Table extends TableData {
   List<int> _createShuffledTiles() {
     final tiles = <int>[];
     // 萬子, 筒子, 索子:9種 字牌: 7種　それぞれが4枚ずつ。
-    for (var i = 0; i < (9 * 3 + 7) * 4; i) {
+    for (var i = 0; i < (9 * 3 + 7) * 4; i++) {
       tiles.add(i);
     }
     tiles.shuffle();
     return tiles;
   }
 
-  void _setupHand() {
+  Future<void> _setupHand() async {
+    state = "doingSetupHand";
     final allTiles = _createShuffledTiles();
     replacementTiles = allTiles.sublist(0, 4);
     deadWallTiles = allTiles.sublist(4, 14);
     wallTiles = allTiles.sublist(14);
+    _updateTableListener();
     for (var i = 0; i < 3; i++) {
+      await Future.delayed(const Duration(seconds: 2));
       for (final peerId in idList()) {
         final tiles = <int>[];
         tiles.add(wallTiles.removeLast());
@@ -238,6 +266,10 @@ class Table extends TableData {
       }
       _updateTableListener();
     }
+    await Future.delayed(const Duration(seconds: 2));
+    _turnTo(idList()[0]);
+    state = "drawable";
+    _updateTableListener();
   }
 
   String _nextPeerId(String peerId) {
@@ -265,12 +297,18 @@ class Table extends TableData {
       return CommandResult(
           CommandResultStateCode.refuse, "not drawable state.");
     }
+
+    print("handleDrawTileCmd: ${peerId}: ${wallTiles}");
     if (wallTiles.isEmpty) {
       return CommandResult(CommandResultStateCode.error, "wallTiles is empty.");
     }
 
     final data = playerData(peerId);
-    if (data.drawnTile.isEmpty) {
+    if (data == null) {
+      return CommandResult(
+          CommandResultStateCode.error, "player data is null.");
+    }
+    if (data.drawnTile.isNotEmpty) {
       return CommandResult(
           CommandResultStateCode.error, "drawnTile is not empty.");
     }
@@ -294,6 +332,11 @@ class Table extends TableData {
     }
 
     final data = playerData(peerId);
+    if (data == null) {
+      return CommandResult(
+          CommandResultStateCode.error, "player data is null.");
+    }
+
     data.tiles.addAll(data.drawnTile);
     if (!data.tiles.contains(tile)) {
       return CommandResult(
@@ -400,11 +443,15 @@ class Table extends TableData {
           CommandResultStateCode.error, "bad selected tiles quantity.");
     }
 
+    final data = playerData(peerId);
+    if (data == null) {
+      return CommandResult(
+          CommandResultStateCode.error, "player data is null.");
+    }
+
     _setSelectedTiles(peerId, selectedTiles, "open-kan");
 
-    playerData(peerId)
-        .drawnTile
-        .add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
+    data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
 
     return CommandResult(CommandResultStateCode.ok, "");
@@ -426,6 +473,10 @@ class Table extends TableData {
     }
 
     final data = playerData(peerId);
+    if (data == null) {
+      return CommandResult(
+          CommandResultStateCode.error, "player data is null.");
+    }
 
     // 鳴き牌登録
     data.calledTiles.add(CalledTiles(-1, peerId, selectedTiles, "close-kan"));
@@ -434,9 +485,7 @@ class Table extends TableData {
       data.tiles.remove(tile);
     }
 
-    playerData(peerId)
-        .drawnTile
-        .add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
+    data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
     countOfKan += 1;
 
@@ -455,6 +504,11 @@ class Table extends TableData {
     }
 
     final data = playerData(peerId);
+    if (data == null) {
+      return CommandResult(
+          CommandResultStateCode.error, "player data is null.");
+    }
+
     var targetIndex = -1;
     for (var i = 0; i < data.calledTiles.length; i++) {
       if (data.calledTiles[i].canLateKanWith(tile)) {
@@ -488,6 +542,9 @@ class Table extends TableData {
       String peerId, List<int> selectedTiles, String callAs) {
     // 鳴き牌を持ち牌から除外
     final data = playerData(peerId);
+    assert(data != null);
+    if (data == null) return;
+
     for (final tile in selectedTiles) {
       data.tiles.remove(tile);
     }

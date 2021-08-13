@@ -344,6 +344,9 @@ class TilesPainter {
   }
 
   void drawDeadWall(Canvas canvas, Size size) {
+    if (_tableData.deadWallTiles.length != 10) {
+      return;
+    }
     final drawObjects = <DrawObject>[];
     const tileDirection = 0;
     const tileThickness = 14.0;
@@ -411,10 +414,14 @@ class TilesPainter {
   }
 
   void paint(Canvas canvas, Size size) {
-    drawDiscardTiles(canvas, size, _tableData.playerData(myPeerId));
+    // print("paint: ${myPeerId}: ${_tableData.toMap()}");
+    final myData = _tableData.playerData(myPeerId);
+    if (myData == null) return;
+
+    drawDiscardTiles(canvas, size, myData);
     drawCalledTiles(canvas, size);
     drawDeadWall(canvas, size);
-    drawMyWall(canvas, size, _tableData.playerData(myPeerId));
+    drawMyWall(canvas, size, myData);
 
     final paint = Paint();
     canvas.drawLine(
