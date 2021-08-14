@@ -38,6 +38,7 @@ class Game {
     });
   }
 
+
   final skyWay = wrapper.SkyWayHelper(useStab: true);
   final roomId;
   final Function onChangedState;
@@ -89,6 +90,18 @@ class Game {
     } else {
       _commandHandler.sendCommand(myPeerId,
           {"command": "discardTile", "commandArgs:tile": tile}).then((result) {
+        _handleCommandResult(result);
+      });
+    }
+  }
+
+  Future<void> openMyWall() async {
+    if (_isOwner()) {
+      final result = table.handleOpenTilesCmd(myPeerId);
+      _handleCommandResult(result);
+    } else {
+      _commandHandler.sendCommand(myPeerId,
+          {"command": "openMyWall"}).then((result) {
         _handleCommandResult(result);
       });
     }
@@ -172,10 +185,16 @@ class Game {
       _commandHandler.sendCommandResult(
           data, table.handleDrawTileCmd(commander));
     }
+
     if (command == "discardTile") {
       final tile = data["commandArgs:tile"] as int;
       _commandHandler.sendCommandResult(
           data, table.handleDiscardTileCmd(commander, tile));
+    }
+
+    if (command == "openMyWall") {
+      _commandHandler.sendCommandResult(
+          data, table.handleOpenTilesCmd(commander));
     }
   }
 

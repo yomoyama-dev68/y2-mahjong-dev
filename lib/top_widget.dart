@@ -14,14 +14,14 @@ class TopWidgetState extends State<TopWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(child: buildGameTable()),
+      body: Center(
+          child: buildGameTable()),
     );
   }
 
   Widget buildGameTable() {
     print("buildGameTable");
-    return SingleChildScrollView(
-        child: Column(children: [
+    return SingleChildScrollView(child: Column(children: [
       GameTableWidget(roomId: widget.roomId, playerName: null),
       GameTableWidget(roomId: widget.roomId, playerName: "Player2"),
       GameTableWidget(roomId: widget.roomId, playerName: "Player3"),

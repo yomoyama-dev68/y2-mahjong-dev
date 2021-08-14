@@ -55,6 +55,7 @@ class TileImages {
 
 class DrawObject {
   DrawObject(this.image, this.pos, this.isCalled);
+
   final ui.Image image;
   final Offset pos;
   final bool isCalled;
@@ -67,11 +68,94 @@ class TilesPainter {
   final tbl.Table _tableData; // <PeerId, プレイヤーデータ> 親順ソート済み
   final Map<String, ui.Image> _imageMap;
 
-  void drawDiscardTiles(Canvas canvas, Size size, tbl.PlayerData data) {
+  void drawOpenedTiles(Canvas canvas, Size size) {
     final drawObjects = <DrawObject>[];
 
-    const centerSize = 33 * 3 * 1.0;
+    final keyList = _tableData.playerDataMap.keys.toList();
+    final baseDirection = keyList.indexOf(myPeerId);
+
     for (var direction = 0; direction < 4; direction++) {
+      final index = (baseDirection + direction) % 4;
+      final data = _tableData.playerDataMap[keyList[index]]!;
+      if (data.openTiles) {
+        drawOpenedTilesPerDirection(drawObjects, data, direction,
+            offsetForOpenedTiles(direction, size));
+      }
+    }
+
+    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
+    final paint = Paint();
+    for (final item in drawObjects) {
+      canvas.drawImage(item.image, item.pos, paint);
+    }
+  }
+
+  Offset offsetForOpenedTiles(int direction, Size size) {
+    final closeTileImage = getTileImage(0, direction);
+    final tileWidth = closeTileImage.width.toDouble();
+    final tileHeight = closeTileImage.height.toDouble();
+
+    if (direction == 0) {
+      return Offset(tileWidth * 3 + 5, size.height - tileHeight - 5);
+    }
+    if (direction == 1) {
+      return Offset(
+          size.width - tileWidth - 5, size.height - (tileHeight - 16) * 3 - 16);
+    }
+    if (direction == 2) {
+      return Offset(size.width - tileWidth * 3 - 5, tileHeight + 5);
+    }
+    if (direction == 3) return Offset(tileWidth + 5, (tileHeight - 16) * 3 + 5);
+    assert(false);
+    return Offset(0, 0);
+  }
+
+  void drawOpenedTilesPerDirection(List<DrawObject> drawObjects,
+      tbl.PlayerData data, int direction, Offset originOffset) {
+    final baseColPos =
+    isPortrait(direction) ? originOffset.dx : originOffset.dy;
+    final baseRowPos =
+    isPortrait(direction) ? originOffset.dy : originOffset.dx;
+
+    var varColPos = baseColPos;
+    void __addDrawObject(int tile) {
+      final tileDirection = direction;
+      final tileThickness = isPortrait(tileDirection) ? 14 : 16;
+      final image = getTileImage(tile, tileDirection);
+
+      final varRowPos = baseRowPos;
+      final rowPos = varRowPosToRowPos(direction, image, varRowPos).toDouble();
+
+      if (direction == 1) varColPos += tileThickness;
+      final colPos = varColPosToColPos(direction, image, varColPos).toDouble();
+      final drawPos = isPortrait(direction)
+          ? Offset(colPos, rowPos)
+          : Offset(rowPos, colPos);
+      drawObjects.add(DrawObject(image, drawPos, false));
+      varColPos += stepColPos(direction, image);
+      if (direction == 3) varColPos -= tileThickness;
+    }
+    for (final tile in data.tiles) {
+      __addDrawObject(tile);
+    }
+    for (final tile in data.drawnTile) {
+      final image = getTileImage(tile, direction);
+      varColPos += stepColPos(direction, image) ~/ 2;
+      __addDrawObject(tile);
+    }
+  }
+
+  void drawDiscardTiles(Canvas canvas, Size size) {
+    final drawObjects = <DrawObject>[];
+
+    final keyList = _tableData.playerDataMap.keys.toList();
+    final baseDirection = keyList.indexOf(myPeerId);
+
+    for (var direction = 0; direction < 4; direction++) {
+      final index = (baseDirection + direction) % 4;
+      final data = _tableData.playerDataMap[keyList[index]]!;
+
+      const centerSize = 33 * 3 * 1.0;
       drawDiscardTilesPerDirection(drawObjects, data, direction,
           size.center(centerOffset(direction, centerSize)));
     }
@@ -135,9 +219,9 @@ class TilesPainter {
   void drawDiscardTilesPerDirection(List<DrawObject> drawObjects,
       tbl.PlayerData data, int direction, Offset originOffset) {
     final baseColPos =
-    isPortrait(direction) ? originOffset.dx : originOffset.dy;
+        isPortrait(direction) ? originOffset.dx : originOffset.dy;
     final baseRowPos =
-    isPortrait(direction) ? originOffset.dy : originOffset.dx;
+        isPortrait(direction) ? originOffset.dy : originOffset.dx;
 
     var varColPos = baseColPos;
     for (var index = 0; index < data.discardedTiles.length; index++) {
@@ -169,6 +253,7 @@ class TilesPainter {
   }
 
   void drawCalledTiles(Canvas canvas, Size size) {
+    // TODO: Rename to drawOpenedTiles
     final drawObjects = <DrawObject>[];
 
     final keyList = _tableData.playerDataMap.keys.toList();
@@ -258,9 +343,9 @@ class TilesPainter {
   }
 
   List<List<int>> createCalledTileDirectionMap(
-      tbl.CalledTiles tiles,
-      int direction,
-      ) {
+    tbl.CalledTiles tiles,
+    int direction,
+  ) {
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
     final callDirection = _tableData.direction(peerId, tiles.calledFrom);
     assert(callDirection != 0);
@@ -323,7 +408,7 @@ class TilesPainter {
       }
 
       final posOffset =
-      offsetForDrawCalledTiles(direction, image, stepMode, tileThickness);
+          offsetForDrawCalledTiles(direction, image, stepMode, tileThickness);
       final colPos = baseColPos + posOffset.dx;
       var rowPos = baseRowPos + posOffset.dy;
 
@@ -364,7 +449,7 @@ class TilesPainter {
       final cols = i % 5;
       final rows = i ~/ 5;
       final drawPos =
-      baseOffset.translate(cols * tileWidth, rows * -tileThickness);
+          baseOffset.translate(cols * tileWidth, rows * -tileThickness);
       drawObjects.add(DrawObject(image, drawPos, false));
     }
 
@@ -385,16 +470,17 @@ class TilesPainter {
 
     final baseOffset = Offset(tileWidth * 3 + 5, size.height - 5);
 
-    for (var i=0; i<data.tiles.length; i++) {
+    for (var i = 0; i < data.tiles.length; i++) {
       final image = getTileImage(data.tiles[i], 4);
       final drawPos = baseOffset.translate(i * tileWidth, -tileHeight);
       drawObjects.add(DrawObject(image, drawPos, false));
     }
 
-    assert(data.drawnTile.length<=1);
-    for (var i=0; i<data.drawnTile.length; i++) {
+    assert(data.drawnTile.length <= 1);
+    for (var i = 0; i < data.drawnTile.length; i++) {
       final image = getTileImage(data.drawnTile[i], tileDirection);
-      final drawPos = baseOffset.translate(data.tiles.length * tileWidth + 10, -tileHeight);
+      final drawPos =
+          baseOffset.translate(data.tiles.length * tileWidth + 10, -tileHeight);
       drawObjects.add(DrawObject(image, drawPos, false));
     }
 
@@ -418,10 +504,11 @@ class TilesPainter {
     final myData = _tableData.playerData(myPeerId);
     if (myData == null) return;
 
-    drawDiscardTiles(canvas, size, myData);
+    drawDiscardTiles(canvas, size);
     drawCalledTiles(canvas, size);
     drawDeadWall(canvas, size);
-    drawMyWall(canvas, size, myData);
+    if (myData.openTiles == false) drawMyWall(canvas, size, myData);
+    drawOpenedTiles(canvas, size);
 
     final paint = Paint();
     canvas.drawLine(

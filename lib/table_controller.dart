@@ -22,8 +22,8 @@ class TileInfo {
       final tupai = tileId > tilesQuantityWithOutTupai;
       type = tupai ? 3 : tileId ~/ (4 * 9); // 0:萬子, 1:筒子, 2,:索子, 3:字牌
       number = tupai
-          ? (tileId - tilesQuantityWithOutTupai) % 7
-          : tileId % 9; // 萬子, 筒子, 索子:9種 字牌: 7種
+          ? (tileId - tilesQuantityWithOutTupai) ~/ 4
+          : (tileId % (4 * 9)) ~/ 4; // 萬子, 筒子, 索子:9種 字牌: 7種
     }
   }
 
@@ -32,8 +32,8 @@ class TileInfo {
 }
 
 class CalledTiles {
-  CalledTiles(
-      this.calledTile, this.calledFrom, this.selectedTiles, this.callAs);
+  CalledTiles(this.calledTile, this.calledFrom, this.selectedTiles,
+      this.callAs);
 
   factory CalledTiles.fromJsonMap(Map<String, dynamic> map) {
     return CalledTiles(map["calledTile"] as int, map["calledFrom"] as String,
@@ -70,6 +70,7 @@ class PlayerData {
   factory PlayerData.fromJsonMap(Map<String, dynamic> map) {
     final data = PlayerData(map["name"]);
     data.score = map["score"] as int;
+    data.openTiles = map["openTiles"];
     data.tiles.addAll(_toListInt(map["tiles"]));
     data.drawnTile.addAll(_toListInt(map["drawnTile"]));
     data.discardedTiles.addAll(_toListInt(map["discardedTiles"]));
@@ -81,6 +82,7 @@ class PlayerData {
 
   final String name;
   int score = 2500;
+  bool openTiles = false;
 
   final List<int> drawnTile = []; // 引いてきた牌
   final List<int> tiles = []; // 持ち牌
@@ -93,6 +95,7 @@ class PlayerData {
     final map = <String, dynamic>{};
     map["name"] = name;
     map["score"] = score;
+    map["openTiles"] = openTiles;
     map["drawnTile"] = drawnTile;
     map["tiles"] = tiles;
     map["discardedTiles"] = discardedTiles;
@@ -117,8 +120,11 @@ class TableState {
   static const waitToDiscardForPongOrChow = "waitToDiscardForPongOrChow";
 
   static const selectingTilesForOpenKan = "selectingTilesForOpenKan";
-}
 
+  static const calledRon = "calledRon";
+  static const drawGame = "drawGame";
+  static const processingFinishHand = "processingFinishHand";
+}
 
 class TableData {
   // 荘中関連
@@ -206,7 +212,8 @@ class Table extends TableData {
   void startGame(Map<String, String> member) {
     // メンバーの順番を乱数でシャッフルする。
     final shuffled = <String, String>{};
-    for (final id in member.keys.toList()..shuffle()) {
+    for (final id in member.keys.toList()
+      ..shuffle()) {
       shuffled[id] = member[id]!;
     }
 
@@ -247,14 +254,14 @@ class Table extends TableData {
   }
 
   Future<void> _setupHand() async {
-    state = "doingSetupHand";
+    state = TableState.doingSetupHand;
     final allTiles = _createShuffledTiles();
     replacementTiles = allTiles.sublist(0, 4);
     deadWallTiles = allTiles.sublist(4, 14);
     wallTiles = allTiles.sublist(14);
     _updateTableListener();
     for (var i = 0; i < 3; i++) {
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(seconds: 1));
       for (final peerId in idList()) {
         final tiles = <int>[];
         tiles.add(wallTiles.removeLast());
@@ -267,8 +274,11 @@ class Table extends TableData {
       _updateTableListener();
     }
     await Future.delayed(const Duration(seconds: 2));
+    for (final v in playerDataMap.values) {
+      v.tiles.sort();
+    }
     _turnTo(idList()[0]);
-    state = "drawable";
+    state = TableState.drawable;
     _updateTableListener();
   }
 
@@ -279,7 +289,7 @@ class Table extends TableData {
 
   void _nextTurn(String peerId) {
     if (wallTiles.isEmpty) {
-      drawnGame();
+      _onDrawGame();
     } else {
       _turnTo(_nextPeerId(peerId));
     }
@@ -287,6 +297,46 @@ class Table extends TableData {
 
   void _turnTo(String peerId) {
     turnedPeerId = peerId;
+  }
+
+  void _onDrawGame() async {
+    // 流局
+    state = TableState.drawGame;
+    _updateTableListener();
+    await Future.delayed(const Duration(seconds: 1));
+    _onFinishedHand();
+  }
+
+  CommandResult handleRonCmd(String peerId) {
+    state = TableState.calledRon;
+    _turnTo(turnedPeerId);
+    _updateTableListener();
+    return CommandResult(CommandResultStateCode.ok, "");
+  }
+
+  CommandResult handleFinishHandCmd(String peerId) {
+    if (turnedPeerId != peerId) {
+      return CommandResult(CommandResultStateCode.error, "not your turn.");
+    }
+    state = TableState.calledRon;
+    _onFinishedHand();
+    return CommandResult(CommandResultStateCode.ok, "");
+  }
+
+  void _onFinishedHand() {
+    state = TableState.processingFinishHand;
+    _updateTableListener();
+  }
+
+  CommandResult handleOpenTilesCmd(String peerId) {
+    final data = playerData(peerId);
+    if (data == null) {
+      return CommandResult(
+          CommandResultStateCode.error, "player data is null.");
+    }
+    data.openTiles = true;
+    _updateTableListener();
+    return CommandResult(CommandResultStateCode.ok, "");
   }
 
   CommandResult handleDrawTileCmd(String peerId) {
@@ -338,12 +388,14 @@ class Table extends TableData {
     }
 
     data.tiles.addAll(data.drawnTile);
+    data.drawnTile.clear();
     if (!data.tiles.contains(tile)) {
       return CommandResult(
           CommandResultStateCode.error, "discarded tile not in your tiles.");
     }
 
     data.tiles.remove(tile);
+    data.tiles.sort();
     data.discardedTiles.add(tile);
 
     lastDiscardedTile = tile;
@@ -353,8 +405,8 @@ class Table extends TableData {
     if (state == "selectingTilesForOpenKan") {
       countOfKan += 1;
     }
-    state = "drawable";
     _nextTurn(turnedPeerId);
+    state = TableState.drawable;
     _updateTableListener();
     return CommandResult(CommandResultStateCode.ok, "");
   }
@@ -375,8 +427,8 @@ class Table extends TableData {
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdSelectedTilesForPongOrChow(
-      String peerId, List<int> selectedTiles) {
+  CommandResult cmdSelectedTilesForPongOrChow(String peerId,
+      List<int> selectedTiles) {
     if (turnedPeerId != peerId) {
       return CommandResult(CommandResultStateCode.error, "not your turn.");
     }
@@ -428,8 +480,8 @@ class Table extends TableData {
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdSetSelectedTilesForOpenKan(
-      String peerId, List<int> selectedTiles) {
+  CommandResult cmdSetSelectedTilesForOpenKan(String peerId,
+      List<int> selectedTiles) {
     if (turnedPeerId != peerId) {
       return CommandResult(CommandResultStateCode.error, "not your turn.");
     }
@@ -457,8 +509,8 @@ class Table extends TableData {
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdSetSelectedTilesForCloseKan(
-      String peerId, List<int> selectedTiles) {
+  CommandResult cmdSetSelectedTilesForCloseKan(String peerId,
+      List<int> selectedTiles) {
     if (turnedPeerId != peerId) {
       return CommandResult(CommandResultStateCode.error, "not your turn.");
     }
@@ -538,8 +590,8 @@ class Table extends TableData {
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  void _setSelectedTiles(
-      String peerId, List<int> selectedTiles, String callAs) {
+  void _setSelectedTiles(String peerId, List<int> selectedTiles,
+      String callAs) {
     // 鳴き牌を持ち牌から除外
     final data = playerData(peerId);
     assert(data != null);
@@ -556,11 +608,5 @@ class Table extends TableData {
     // 鳴先に対して鳴かれた牌登録
     final otherData = playerDataMap[lastDiscardedPlayerPeerID]!;
     otherData.calledTilesByOther.add(lastDiscardedTile);
-  }
-
-  void drawnGame() {
-    // 流局
-    state = "drawGame";
-    turnedPeerId = "";
   }
 }
