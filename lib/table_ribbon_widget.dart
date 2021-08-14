@@ -82,7 +82,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
 
   List<Widget> _buildRibbonForFinishHand() {
     return [
-      _buildButtonForCallCmd("牌オープン", null),
+      _buildButtonForCallCmd("牌オープン", g().openMyWall),
       _buildButtonForCallCmd("点棒支払", null),
       _buildButtonForCallCmd("次局へ", null),
     ];
@@ -92,7 +92,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     return [
       _buildButtonForCallCmd("ドロー", g().drawTile),
       _buildButtonForCallCmd("ポン", g().openMyWall),
-      _buildButtonForCallCmd("チー", g().drawTile),
+      _buildButtonForCallCmd("チー", g().startTradingScore),
       _buildButtonForCallCmd("カン", g().drawTile),
       _buildButtonForCallCmd("ロン", g().drawTile)
     ];

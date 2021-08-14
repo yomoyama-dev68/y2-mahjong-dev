@@ -38,7 +38,6 @@ class Game {
     });
   }
 
-
   final skyWay = wrapper.SkyWayHelper(useStab: true);
   final roomId;
   final Function onChangedState;
@@ -100,8 +99,63 @@ class Game {
       final result = table.handleOpenTilesCmd(myPeerId);
       _handleCommandResult(result);
     } else {
-      _commandHandler.sendCommand(myPeerId,
-          {"command": "openMyWall"}).then((result) {
+      _commandHandler
+          .sendCommand(myPeerId, {"command": "openMyWall"}).then((result) {
+        _handleCommandResult(result);
+      });
+    }
+  }
+
+  bool isTradingScore = false;
+
+  void startTradingScore() {
+    isTradingScore = true;
+    onChangedState();
+  }
+
+  void cancelTradingScore() {
+    isTradingScore = false;
+    onChangedState();
+  }
+
+  Future<void> requestScore(Map<String, int> request) async {
+    print("requestTradingScore: ${request}");
+    if (_isOwner()) {
+      final result = table.handleRequestScore(myPeerId, request);
+      _handleCommandResult(result);
+    } else {
+      _commandHandler.sendCommand(myPeerId, {
+        "command": "requestScore",
+        "commandArgs:request": request //Map<String, int> request
+      }).then((result) {
+        _handleCommandResult(result);
+      });
+    }
+    isTradingScore = false;
+    onChangedState();
+  }
+
+  Future<void> acceptRequestedScore() async {
+    if (_isOwner()) {
+      final result = table.handleAcceptRequestedScore(myPeerId);
+      _handleCommandResult(result);
+    } else {
+      _commandHandler.sendCommand(myPeerId, {
+        "command": "acceptRequestedScore",
+      }).then((result) {
+        _handleCommandResult(result);
+      });
+    }
+  }
+
+  Future<void> refuseRequestedScore() async {
+    if (_isOwner()) {
+      final result = table.handleRefuseRequestedScore(myPeerId);
+      _handleCommandResult(result);
+    } else {
+      _commandHandler.sendCommand(myPeerId, {
+        "command": "refuseRequestedScore",
+      }).then((result) {
         _handleCommandResult(result);
       });
     }
@@ -195,6 +249,24 @@ class Game {
     if (command == "openMyWall") {
       _commandHandler.sendCommandResult(
           data, table.handleOpenTilesCmd(commander));
+    }
+
+    if (command == "requestScore") {
+      final request = (data["commandArgs:request"] as Map<String, dynamic>)
+          .map((key, value) => MapEntry(key, value as int));
+      print("requestScore: ${request}");
+      _commandHandler.sendCommandResult(
+          data, table.handleRequestScore(commander, request));
+    }
+
+    if (command == "acceptRequestedScore") {
+      _commandHandler.sendCommandResult(
+          data, table.handleAcceptRequestedScore(commander));
+    }
+
+    if (command == "refuseRequestedScore") {
+      _commandHandler.sendCommandResult(
+          data, table.handleRefuseRequestedScore(commander));
     }
   }
 

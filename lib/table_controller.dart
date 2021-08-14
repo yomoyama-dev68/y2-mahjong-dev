@@ -32,8 +32,8 @@ class TileInfo {
 }
 
 class CalledTiles {
-  CalledTiles(this.calledTile, this.calledFrom, this.selectedTiles,
-      this.callAs);
+  CalledTiles(
+      this.calledTile, this.calledFrom, this.selectedTiles, this.callAs);
 
   factory CalledTiles.fromJsonMap(Map<String, dynamic> map) {
     return CalledTiles(map["calledTile"] as int, map["calledFrom"] as String,
@@ -70,6 +70,9 @@ class PlayerData {
   factory PlayerData.fromJsonMap(Map<String, dynamic> map) {
     final data = PlayerData(map["name"]);
     data.score = map["score"] as int;
+    data.requestingScoreFrom.addAll(
+        (map["requestingScoreFrom"] as Map<String, dynamic>)
+            .map((key, value) => MapEntry(key, value as int)));
     data.openTiles = map["openTiles"];
     data.tiles.addAll(_toListInt(map["tiles"]));
     data.drawnTile.addAll(_toListInt(map["drawnTile"]));
@@ -81,7 +84,8 @@ class PlayerData {
   }
 
   final String name;
-  int score = 2500;
+  final requestingScoreFrom = <String, int>{};
+  int score = 25000;
   bool openTiles = false;
 
   final List<int> drawnTile = []; // 引いてきた牌
@@ -95,6 +99,7 @@ class PlayerData {
     final map = <String, dynamic>{};
     map["name"] = name;
     map["score"] = score;
+    map["requestingScoreFrom"] = requestingScoreFrom;
     map["openTiles"] = openTiles;
     map["drawnTile"] = drawnTile;
     map["tiles"] = tiles;
@@ -212,8 +217,7 @@ class Table extends TableData {
   void startGame(Map<String, String> member) {
     // メンバーの順番を乱数でシャッフルする。
     final shuffled = <String, String>{};
-    for (final id in member.keys.toList()
-      ..shuffle()) {
+    for (final id in member.keys.toList()..shuffle()) {
       shuffled[id] = member[id]!;
     }
 
@@ -328,6 +332,55 @@ class Table extends TableData {
     _updateTableListener();
   }
 
+  CommandResult handleRequestScore(String peerId, Map<String, int> request) {
+    for (final e in request.entries) {
+      final data = playerData(e.key);
+      if (data == null) {
+        return CommandResult(
+            CommandResultStateCode.error, "player data is null.");
+      }
+      data.requestingScoreFrom[peerId] = e.value; // Score
+    }
+    _updateTableListener();
+    return CommandResult(CommandResultStateCode.ok, "");
+  }
+
+  CommandResult handleRefuseRequestedScore(String peerId) {
+    final data = playerData(peerId);
+    if (data == null) {
+      return CommandResult(
+          CommandResultStateCode.error, "player data is null.");
+    }
+    data.requestingScoreFrom.clear();
+    _updateTableListener();
+    return CommandResult(CommandResultStateCode.ok, "");
+  }
+
+  CommandResult handleAcceptRequestedScore(String peerId) {
+    final data = playerData(peerId);
+    if (data == null) {
+      return CommandResult(
+          CommandResultStateCode.error, "player data is null.");
+    }
+
+    for (final e in data.requestingScoreFrom.entries) {
+      final requester = e.key;
+      final score = e.value;
+
+      final requesterData = playerData(requester);
+      if (requesterData == null) {
+        return CommandResult(
+            CommandResultStateCode.error, "Requester data is null.");
+      }
+      requesterData.score -= score;
+      data.score += score;
+    }
+
+    data.requestingScoreFrom.clear();
+    _updateTableListener();
+    return CommandResult(CommandResultStateCode.ok, "");
+  }
+
   CommandResult handleOpenTilesCmd(String peerId) {
     final data = playerData(peerId);
     if (data == null) {
@@ -427,8 +480,8 @@ class Table extends TableData {
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdSelectedTilesForPongOrChow(String peerId,
-      List<int> selectedTiles) {
+  CommandResult cmdSelectedTilesForPongOrChow(
+      String peerId, List<int> selectedTiles) {
     if (turnedPeerId != peerId) {
       return CommandResult(CommandResultStateCode.error, "not your turn.");
     }
@@ -480,8 +533,8 @@ class Table extends TableData {
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdSetSelectedTilesForOpenKan(String peerId,
-      List<int> selectedTiles) {
+  CommandResult cmdSetSelectedTilesForOpenKan(
+      String peerId, List<int> selectedTiles) {
     if (turnedPeerId != peerId) {
       return CommandResult(CommandResultStateCode.error, "not your turn.");
     }
@@ -509,8 +562,8 @@ class Table extends TableData {
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdSetSelectedTilesForCloseKan(String peerId,
-      List<int> selectedTiles) {
+  CommandResult cmdSetSelectedTilesForCloseKan(
+      String peerId, List<int> selectedTiles) {
     if (turnedPeerId != peerId) {
       return CommandResult(CommandResultStateCode.error, "not your turn.");
     }
@@ -590,8 +643,8 @@ class Table extends TableData {
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  void _setSelectedTiles(String peerId, List<int> selectedTiles,
-      String callAs) {
+  void _setSelectedTiles(
+      String peerId, List<int> selectedTiles, String callAs) {
     // 鳴き牌を持ち牌から除外
     final data = playerData(peerId);
     assert(data != null);

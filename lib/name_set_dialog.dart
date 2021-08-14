@@ -40,7 +40,7 @@ class NameSetDialogState extends State<NameSetDialog> {
         controller: _textController,
         decoration: const InputDecoration(border: OutlineInputBorder()),
         autofocus: true,
-        keyboardType: TextInputType.number,
+        keyboardType: TextInputType.text,
       ),
       actions: actions,
     );

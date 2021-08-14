@@ -83,21 +83,139 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   }
 
   Widget buildBody() {
+    final stacks = <Widget>[];
+    stacks.add(Container(
+      color: Colors.teal,
+      width: 700,
+      height: 700,
+      child: CustomPaint(
+        painter: TablePainter(_game.myPeerId, _game.table, _imageMap),
+      ),
+    ));
+    if (_game.isTradingScore) {
+      stacks.add(SizedBox(width: 350, child: buildTradingScoreWidget()));
+    }
+    final myData = _game.table.playerDataMap[_game.myPeerId];
+    if (myData != null && myData.requestingScoreFrom.isNotEmpty) {
+      stacks.add(SizedBox(
+          width: 350,
+          child: buildAcceptTradingScoreWidget(myData.requestingScoreFrom)));
+    }
+
     return Column(
       children: [
-        Container(
-          color: Colors.teal,
-          width: 700,
-          height: 700,
-          child: CustomPaint(
-            painter: TablePainter(_game.myPeerId, _game.table, _imageMap),
-          ),
+        Stack(
+          children: stacks,
+          alignment: Alignment.center,
         ),
         SizedBox(
           width: 700,
           child: TableRibbonWidget(gameData: _game),
         ),
       ],
+    );
+  }
+
+  Widget buildAcceptTradingScoreWidget(Map<String, int> requestingScoreFrom) {
+    final widgets = <Widget>[
+      const Text("点棒支払を受け入れますか？"),
+      const SizedBox(
+        height: 10,
+      )
+    ];
+
+    final textControllerMap = <String, TextEditingController>{};
+
+    for (final e in _game.member.entries) {
+      if (_game.myPeerId == e.key) continue;
+      if (!requestingScoreFrom.containsKey(e.key)) continue;
+      final score = requestingScoreFrom[e.key].toString();
+      final textController = TextEditingController();
+      textControllerMap[e.key] = textController;
+      textController.text = score;
+      widgets.add(TextField(
+        controller: textController,
+        readOnly: true,
+        decoration: InputDecoration(
+            labelText: "${e.value}から", border: OutlineInputBorder()),
+      ));
+      widgets.add(const SizedBox(
+        height: 10,
+      ));
+    }
+
+    widgets.add(Row(children: [
+      Spacer(),
+      ElevatedButton(
+        child: const Text("No"),
+        onPressed: () {_game.refuseRequestedScore();},
+      ),
+      const SizedBox(
+        width: 5,
+      ),
+      ElevatedButton(
+        child: const Text("OK"),
+        onPressed: () {_game.acceptRequestedScore();},
+      )
+    ]));
+    return Container(
+      padding: const EdgeInsets.all(5),
+      child: Column(children: widgets),
+      color: Colors.white,
+    );
+  }
+
+  Widget buildTradingScoreWidget() {
+    final widgets = <Widget>[
+      const Text("点棒支払"),
+      const SizedBox(
+        height: 10,
+      )
+    ];
+
+    final textControllerMap = <String, TextEditingController>{};
+
+    for (final e in _game.member.entries) {
+      final textController = TextEditingController();
+      if (_game.myPeerId == e.key) continue;
+      textControllerMap[e.key] = textController;
+      widgets.add(TextField(
+        controller: textController,
+        decoration: InputDecoration(
+            labelText: "${e.value}へ", border: OutlineInputBorder()),
+        autofocus: true,
+        keyboardType: TextInputType.number,
+      ));
+      widgets.add(const SizedBox(
+        height: 10,
+      ));
+    }
+
+    widgets.add(Row(children: [
+      Spacer(),
+      ElevatedButton(
+        child: const Text("Cancel"),
+        onPressed: () {
+          _game.cancelTradingScore();
+        },
+      ),
+      const SizedBox(
+        width: 5,
+      ),
+      ElevatedButton(
+        child: const Text("OK"),
+        onPressed: () {
+          final request = textControllerMap.map(
+              (key, value) => MapEntry(key, int.tryParse(value.text) ?? 0));
+          request.removeWhere((key, value) => value == 0);
+          _game.requestScore(request);
+        },
+      )
+    ]));
+    return Container(
+      padding: const EdgeInsets.all(5),
+      child: Column(children: widgets),
+      color: Colors.white,
     );
   }
 
