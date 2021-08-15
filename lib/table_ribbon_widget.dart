@@ -24,6 +24,12 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     return g().myPeerId == g().table.turnedPeerId;
   }
 
+  bool isWaitingNextHand() {
+    final myData = g().table.playerDataMap[g().myPeerId];
+    if (myData == null) return false;
+    return myData.waitingNextHand;
+  }
+
   bool canCmd() {
     return g().canCommand();
   }
@@ -67,10 +73,23 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     }
 
     if (tblState == tbl.TableState.processingFinishHand) {
+      final cmdWidgets = isWaitingNextHand()
+          ? [Text("次局の開始を待っています。")]
+          : _buildRibbonForFinishHand();
       return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: _buildRibbonForFinishHand());
+          children: cmdWidgets);
     }
+
+    if (tblState == tbl.TableState.calledRon) {
+      final cmdWidgets = isMyTurn()
+          ? _buildRibbonForConfirmingAboutFinishHand()
+          : [Text("${turnedPlayerName()}さんがロンしました。")];
+      return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: cmdWidgets);
+    }
+
     return const Text("エラー：想定していない状態が発生しました。");
   }
 
@@ -80,11 +99,18 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         onPressed: canCmd() && (func != null) ? () => func() : null);
   }
 
+  List<Widget> _buildRibbonForConfirmingAboutFinishHand() {
+    return [
+      _buildButtonForCallCmd("Ok", g().finishHand),
+      _buildButtonForCallCmd("Cancel", null),
+    ];
+  }
+
   List<Widget> _buildRibbonForFinishHand() {
     return [
       _buildButtonForCallCmd("牌オープン", g().openMyWall),
-      _buildButtonForCallCmd("点棒支払", null),
-      _buildButtonForCallCmd("次局へ", null),
+      _buildButtonForCallCmd("点棒支払", g().startTradingScore),
+      _buildButtonForCallCmd("次局へ", g().requestNextHand),
     ];
   }
 
@@ -94,7 +120,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       _buildButtonForCallCmd("ポン", g().openMyWall),
       _buildButtonForCallCmd("チー", g().startTradingScore),
       _buildButtonForCallCmd("カン", g().drawTile),
-      _buildButtonForCallCmd("ロン", g().drawTile)
+      _buildButtonForCallCmd("ロン", g().ron)
     ];
   }
 

@@ -106,6 +106,30 @@ class Game {
     }
   }
 
+  Future<void> ron() async {
+    if (_isOwner()) {
+      final result = table.handleRonCmd(myPeerId);
+      _handleCommandResult(result);
+    } else {
+      _commandHandler
+          .sendCommand(myPeerId, {"command": "handleRonCmd"}).then((result) {
+        _handleCommandResult(result);
+      });
+    }
+  }
+
+  Future<void> finishHand() async {
+    if (_isOwner()) {
+      final result = table.handleFinishHandCmd(myPeerId);
+      _handleCommandResult(result);
+    } else {
+      _commandHandler
+          .sendCommand(myPeerId, {"command": "handleFinishHandCmd"}).then((result) {
+        _handleCommandResult(result);
+      });
+    }
+  }
+
   bool isTradingScore = false;
 
   void startTradingScore() {
@@ -155,6 +179,19 @@ class Game {
     } else {
       _commandHandler.sendCommand(myPeerId, {
         "command": "refuseRequestedScore",
+      }).then((result) {
+        _handleCommandResult(result);
+      });
+    }
+  }
+
+  Future<void> requestNextHand() async {
+    if (_isOwner()) {
+      final result = table.handleRequestNextHand(myPeerId);
+      _handleCommandResult(result);
+    } else {
+      _commandHandler.sendCommand(myPeerId, {
+        "command": "requestNextHand",
       }).then((result) {
         _handleCommandResult(result);
       });
@@ -267,6 +304,21 @@ class Game {
     if (command == "refuseRequestedScore") {
       _commandHandler.sendCommandResult(
           data, table.handleRefuseRequestedScore(commander));
+    }
+
+    if (command == "requestNextHand") {
+      _commandHandler.sendCommandResult(
+          data, table.handleRequestNextHand(commander));
+    }
+
+    if (command == "handleRonCmd") {
+      _commandHandler.sendCommandResult(
+          data, table.handleRonCmd(commander));
+    }
+
+    if (command == "handleFinishHandCmd") {
+      _commandHandler.sendCommandResult(
+          data, table.handleFinishHandCmd(commander));
     }
   }
 

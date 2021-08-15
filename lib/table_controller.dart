@@ -69,10 +69,12 @@ class PlayerData {
 
   factory PlayerData.fromJsonMap(Map<String, dynamic> map) {
     final data = PlayerData(map["name"]);
-    data.score = map["score"] as int;
+
     data.requestingScoreFrom.addAll(
         (map["requestingScoreFrom"] as Map<String, dynamic>)
             .map((key, value) => MapEntry(key, value as int)));
+    data.waitingNextHand = map["waitingNextHand"] as bool;
+    data.score = map["score"] as int;
     data.openTiles = map["openTiles"];
     data.tiles.addAll(_toListInt(map["tiles"]));
     data.drawnTile.addAll(_toListInt(map["drawnTile"]));
@@ -80,11 +82,13 @@ class PlayerData {
     data.calledTiles.addAll(_toListCalledTiles(map["calledTiles"]));
     data.calledTilesByOther.addAll(_toListInt(map["calledTilesByOther"]));
     data.calledTilesByOther.addAll(_toListInt(map["calledTilesByOther"]));
+
     return data;
   }
 
   final String name;
   final requestingScoreFrom = <String, int>{};
+  bool waitingNextHand = false;
   int score = 25000;
   bool openTiles = false;
 
@@ -95,11 +99,21 @@ class PlayerData {
   final List<int> calledTilesByOther = []; // 鳴かれた牌
   final List<int> riichiTile = []; // リーチ牌
 
+  void clearTiles() {
+    drawnTile.clear();
+    tiles.clear();
+    discardedTiles.clear();
+    calledTiles.clear();
+    calledTilesByOther.clear();
+    riichiTile.clear();
+  }
+
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
     map["name"] = name;
     map["score"] = score;
     map["requestingScoreFrom"] = requestingScoreFrom;
+    map["waitingNextHand"] = waitingNextHand;
     map["openTiles"] = openTiles;
     map["drawnTile"] = drawnTile;
     map["tiles"] = tiles;
@@ -129,6 +143,7 @@ class TableState {
   static const calledRon = "calledRon";
   static const drawGame = "drawGame";
   static const processingFinishHand = "processingFinishHand";
+  static const waitingNextHand = "waitingNextHand";
 }
 
 class TableData {
@@ -136,6 +151,7 @@ class TableData {
   Map<String, PlayerData> playerDataMap = {}; // 親順ソート済み
   int leaderChangeCount = -1; // 局数: 0~3:東場, 4~7:南場,
   int leaderContinuousCount = 0; // 場数（親継続数）
+  String lastWinner = "";
 
   // 局中関連
   String state = TableState.notSetup;
@@ -227,6 +243,18 @@ class Table extends TableData {
     }
   }
 
+  void nextHand() {
+    for (final data in playerDataMap.values) {
+      data.waitingNextHand = false;
+    }
+
+    if (lastWinner == currentLeader()) {
+      continueLeader();
+    } else {
+      nextLeader();
+    }
+  }
+
   void nextLeader() {
     assert(playerDataMap.length == 4);
     leaderChangeCount += 1;
@@ -245,6 +273,7 @@ class Table extends TableData {
   void continueLeader() {
     leaderContinuousCount += 1;
     _updateTableListener();
+    _setupHand();
   }
 
   List<int> _createShuffledTiles() {
@@ -259,6 +288,12 @@ class Table extends TableData {
 
   Future<void> _setupHand() async {
     state = TableState.doingSetupHand;
+
+    for (final v in playerDataMap.values) {
+      v.clearTiles();
+    }
+
+
     final allTiles = _createShuffledTiles();
     replacementTiles = allTiles.sublist(0, 4);
     deadWallTiles = allTiles.sublist(4, 14);
@@ -281,9 +316,13 @@ class Table extends TableData {
     for (final v in playerDataMap.values) {
       v.tiles.sort();
     }
-    _turnTo(idList()[0]);
+    _turnTo(currentLeader());
     state = TableState.drawable;
     _updateTableListener();
+  }
+
+  String currentLeader() {
+    return idList()[leaderChangeCount % 4];
   }
 
   String _nextPeerId(String peerId) {
@@ -322,13 +361,13 @@ class Table extends TableData {
     if (turnedPeerId != peerId) {
       return CommandResult(CommandResultStateCode.error, "not your turn.");
     }
-    state = TableState.calledRon;
     _onFinishedHand();
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
   void _onFinishedHand() {
     state = TableState.processingFinishHand;
+    lastWinner = turnedPeerId;
     _updateTableListener();
   }
 
@@ -378,6 +417,27 @@ class Table extends TableData {
 
     data.requestingScoreFrom.clear();
     _updateTableListener();
+    return CommandResult(CommandResultStateCode.ok, "");
+  }
+
+  CommandResult handleRequestNextHand(String peerId) {
+    final data = playerData(peerId);
+    if (data == null) {
+      return CommandResult(
+          CommandResultStateCode.error, "player data is null.");
+    }
+    data.waitingNextHand = true;
+    print("handleRequestNextHand: ${peerId}: ${data.waitingNextHand}");
+    _updateTableListener();
+
+    // 全員が次局待機状態であれば次局を開始する。
+    var waitingPlayerCount = 0;
+    for (final v in playerDataMap.values) {
+      waitingPlayerCount += v.waitingNextHand ? 1 : 0;
+    }
+    if (waitingPlayerCount == 4) {
+      Future.delayed(const Duration(seconds: 1)).then((value) => nextHand());
+    }
     return CommandResult(CommandResultStateCode.ok, "");
   }
 
