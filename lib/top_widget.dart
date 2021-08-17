@@ -22,7 +22,7 @@ class TopWidgetState extends State<TopWidget> {
   Widget buildGameTable() {
     print("buildGameTable");
     return SingleChildScrollView(child: Column(children: [
-      GameTableWidget(roomId: widget.roomId, playerName: null),
+      GameTableWidget(roomId: widget.roomId, playerName: "p1"),
       GameTableWidget(roomId: widget.roomId, playerName: "Player2"),
       GameTableWidget(roomId: widget.roomId, playerName: "Player3"),
       GameTableWidget(roomId: widget.roomId, playerName: "Player4"),

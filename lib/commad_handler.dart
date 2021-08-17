@@ -28,6 +28,7 @@ class CommandResult {
 
 class CommandHandler {
   CommandHandler(this.skyWay);
+
   final wrapper.SkyWayHelper skyWay;
   final _completerMap = <int, Completer<CommandResult>>{};
 
@@ -35,15 +36,16 @@ class CommandHandler {
     return _completerMap.isEmpty;
   }
 
-  Future<CommandResult> sendCommand(
-      String commanderPeerId, Map<String, dynamic> command) {
+  Future<CommandResult> sendCommand(String commanderPeerId, String commandName,
+      Map<String, dynamic> commandArgs) {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final tmp = <String, dynamic>{
       "type": "command",
       "commander": commanderPeerId,
       "commandTimestamp": timestamp,
+      "commandName": commandName,
+      "commandArgs": commandArgs,
     };
-    tmp.addAll(command);
     final completer = Completer<CommandResult>();
     _completerMap[timestamp] = completer;
     skyWay.sendData(jsonEncode(tmp));

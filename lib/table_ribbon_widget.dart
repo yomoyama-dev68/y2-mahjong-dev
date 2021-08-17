@@ -46,6 +46,8 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   @override
   Widget build(BuildContext context) {
     final tblState = g().table.state;
+    print("build: "+ tblState);
+
     if (tblState == tbl.TableState.notSetup ||
         tblState == tbl.TableState.doingSetupHand) {
       return const Text("セットアップなう");
@@ -59,9 +61,38 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: widgets);
     }
 
-    if (tblState == tbl.TableState.waitToDiscard) {
+    const waitToDiscard = [
+      tbl.TableState.waitToDiscard,
+      tbl.TableState.waitToDiscardForPongOrChow,
+      tbl.TableState.waitToDiscardForOpenKan,
+      tbl.TableState.waitToDiscardForCloseKan,
+      tbl.TableState.waitToDiscardForLateKan
+    ];
+
+    if (waitToDiscard.contains(tblState)) {
       final cmdWidgets = isMyTurn()
           ? _buildRibbonForWaitingSelfDiscard()
+          : _buildRibbonForWaitingOtherDiscard();
+      final rowWidgets = <Widget>[
+        Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: cmdWidgets),
+      ];
+      if (isMyTurn()) rowWidgets.add(_buildMyWall());
+      return Column(children: rowWidgets);
+    }
+
+    const selectingTiles = [
+      tbl.TableState.selectingTilesForPong,
+      tbl.TableState.selectingTilesForChow,
+      tbl.TableState.selectingTilesForOpenKan,
+      tbl.TableState.selectingTilesForCloseKan,
+      tbl.TableState.selectingTilesForLateKan,
+    ];
+
+    if (selectingTiles.contains(tblState)) {
+      final cmdWidgets = isMyTurn()
+          ? _buildRibbonForSelectingTiles()
           : _buildRibbonForWaitingOtherDiscard();
       final rowWidgets = <Widget>[
         Row(
@@ -102,7 +133,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   List<Widget> _buildRibbonForConfirmingAboutFinishHand() {
     return [
       _buildButtonForCallCmd("Ok", g().finishHand),
-      _buildButtonForCallCmd("Cancel", null),
+      _buildButtonForCallCmd("Cancel", g().cancelCall),
     ];
   }
 
@@ -117,26 +148,41 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   List<Widget> _buildRibbonForDrawable() {
     return [
       _buildButtonForCallCmd("ドロー", g().drawTile),
-      _buildButtonForCallCmd("ポン", g().openMyWall),
-      _buildButtonForCallCmd("チー", g().startTradingScore),
-      _buildButtonForCallCmd("カン", g().drawTile),
-      _buildButtonForCallCmd("ロン", g().ron)
+      _buildButtonForCallCmd("ポン", g().pong),
+      _buildButtonForCallCmd("チー", g().chow),
+      _buildButtonForCallCmd("カン", g().openKan),
+      _buildButtonForCallCmd("ツモ", null)
     ];
   }
 
   List<Widget> _buildRibbonForCallableFromOther() {
     return [
-      _buildButtonForCallCmd("ポン", () {}),
-      _buildButtonForCallCmd("カン", () {}),
-      _buildButtonForCallCmd("ロン", () {})
+      _buildButtonForCallCmd("ポン", g().pong),
+      _buildButtonForCallCmd("カン", g().openKan),
+      _buildButtonForCallCmd("ロン", g().ron)
     ];
   }
 
   List<Widget> _buildRibbonForWaitingSelfDiscard() {
     return [
-      _buildButtonForCallCmd("カン", () {}),
+      _buildButtonForCallCmd("カン", g().selfKan),
       _buildButtonForCallCmd("リーチ", () {}),
       _buildButtonForCallCmd("ツモ", () {}),
+    ];
+  }
+
+  List<Widget> _buildRibbonForSelectingCloseOrLateKan() {
+    return [
+      _buildButtonForCallCmd("キャンセル", g().cancelCall),
+      _buildButtonForCallCmd("暗カン", g().closeKan),
+      _buildButtonForCallCmd("加カン", g().lateKan),
+    ];
+  }
+
+  List<Widget> _buildRibbonForSelectingTiles() {
+    return [
+      _buildButtonForCallCmd("キャンセル", g().cancelCall),
+      _buildButtonForCallCmd("OK", () => g().setSelectedTiles(_selectingTiles)),
     ];
   }
 
@@ -154,9 +200,11 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     for (final tile in myData.tiles) {
       widgets.add(_buildTile(tile, _selectingTiles.contains(tile)));
     }
-    widgets.add(const SizedBox(width: (33 / 0.8) / 2));
-    final tile = myData.drawnTile.first;
-    widgets.add(_buildTile(tile, _selectingTiles.contains(tile)));
+    if (myData.drawnTile.isNotEmpty) {
+      widgets.add(const SizedBox(width: (33 / 0.8) / 2));
+      final tile = myData.drawnTile.first;
+      widgets.add(_buildTile(tile, _selectingTiles.contains(tile)));
+    }
 
     return SingleChildScrollView(
         child: Row(
@@ -191,6 +239,8 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       if (tblState == tbl.TableState.waitToDiscard) {
         _selectDiscardTile(tile);
       }
+      int limit = _selectableTilesQuantity(tblState);
+      if (limit > 0) _selectTile(tile, limit);
     });
   }
 
@@ -207,6 +257,25 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
 
     _selectingTiles.clear();
     _selectingTiles.add(tile);
+  }
+
+  int _selectableTilesQuantity(String tblState) {
+    if (tblState == tbl.TableState.selectingTilesForPong) return 2;
+    if (tblState == tbl.TableState.selectingTilesForChow) return 2;
+    if (tblState == tbl.TableState.selectingTilesForOpenKan) return 3;
+    if (tblState == tbl.TableState.selectingTilesForCloseKan) return 4;
+    if (tblState == tbl.TableState.selectingTilesForLateKan) return 1;
+    return 0;
+  }
+
+  void _selectTile(int tile, limit) {
+    if (_selectingTiles.contains(tile)) {
+      _selectingTiles.remove(tile);
+    } else {
+      if (_selectingTiles.length < limit) {
+        _selectingTiles.add(tile);
+      }
+    }
   }
 
   String _tileToImageFileUrl(int tile) {

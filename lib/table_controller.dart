@@ -37,7 +37,7 @@ class CalledTiles {
 
   factory CalledTiles.fromJsonMap(Map<String, dynamic> map) {
     return CalledTiles(map["calledTile"] as int, map["calledFrom"] as String,
-        map["selectedTiles"] as List<int>, map["callAs"] as String);
+        _toListInt(map["selectedTiles"]), map["callAs"] as String);
   }
 
   final int calledTile;
@@ -126,6 +126,28 @@ class PlayerData {
   }
 }
 
+class NotYourTurnException implements Exception {
+  NotYourTurnException([this.message = 'Not your turn.']);
+
+  final String message;
+
+  @override
+  String toString() {
+    return message;
+  }
+}
+
+class RefuseException implements Exception {
+  RefuseException([this.message = '']);
+
+  final String message;
+
+  @override
+  String toString() {
+    return message;
+  }
+}
+
 class TableState {
   static const notSetup = "notSetup";
   static const doingSetupHand = "doingSetupHand";
@@ -135,10 +157,18 @@ class TableState {
   static const waitToDiscard = "waitToDiscard";
 
   static const selectingTilesForPong = "selectingTilesForPong";
-  static const selectTilesForChow = "selectTilesForChow";
+  static const selectingTilesForChow = "selectTilesForChow";
   static const waitToDiscardForPongOrChow = "waitToDiscardForPongOrChow";
 
+  static const selectingCloseOrLateKan = "selectingCloseOrLateKan";
+
   static const selectingTilesForOpenKan = "selectingTilesForOpenKan";
+  static const selectingTilesForCloseKan = "selectingTilesForCloseKan";
+  static const selectingTilesForLateKan = "selectingTilesForLateKan";
+
+  static const waitToDiscardForOpenKan = "waitToDiscardForOpenKan";
+  static const waitToDiscardForCloseKan = "waitToDiscardForCloseKan";
+  static const waitToDiscardForLateKan = "waitToDiscardForLateKan";
 
   static const calledRon = "calledRon";
   static const drawGame = "drawGame";
@@ -293,7 +323,6 @@ class Table extends TableData {
       v.clearTiles();
     }
 
-
     final allTiles = _createShuffledTiles();
     replacementTiles = allTiles.sublist(0, 4);
     deadWallTiles = allTiles.sublist(4, 14);
@@ -332,7 +361,7 @@ class Table extends TableData {
 
   void _nextTurn(String peerId) {
     if (wallTiles.isEmpty) {
-      _onDrawGame();
+      _onDrawGame(); // 流局
     } else {
       _turnTo(_nextPeerId(peerId));
     }
@@ -343,26 +372,10 @@ class Table extends TableData {
   }
 
   void _onDrawGame() async {
-    // 流局
     state = TableState.drawGame;
     _updateTableListener();
     await Future.delayed(const Duration(seconds: 1));
     _onFinishedHand();
-  }
-
-  CommandResult handleRonCmd(String peerId) {
-    state = TableState.calledRon;
-    _turnTo(turnedPeerId);
-    _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
-  }
-
-  CommandResult handleFinishHandCmd(String peerId) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.error, "not your turn.");
-    }
-    _onFinishedHand();
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
   void _onFinishedHand() {
@@ -371,63 +384,85 @@ class Table extends TableData {
     _updateTableListener();
   }
 
-  CommandResult handleRequestScore(String peerId, Map<String, int> request) {
+  handleCancelCall({required String peerId}) {
+    _checkState(peerId, allowTableState: [
+      TableState.calledRon,
+      TableState.selectingTilesForPong,
+      TableState.selectingTilesForChow,
+      TableState.selectingTilesForOpenKan,
+      TableState.selectingCloseOrLateKan,
+      TableState.selectingTilesForCloseKan,
+      TableState.selectingTilesForLateKan,
+    ]);
+
+    _nextTurn(lastDiscardedPlayerPeerID);
+    state = TableState.drawable;
+    _updateTableListener();
+  }
+
+  handleRon({required String peerId}) {
+    state = TableState.calledRon;
+    _turnTo(turnedPeerId);
+    _updateTableListener();
+  }
+
+  handleFinishHand({required String peerId}) {
+    _checkState(peerId, allowTableState: [TableState.calledRon]);
+    _onFinishedHand();
+  }
+
+  handleRequestScore(
+      {required String peerId, required Map<String, dynamic> request}) {
     for (final e in request.entries) {
-      final data = playerData(e.key);
-      if (data == null) {
-        return CommandResult(
-            CommandResultStateCode.error, "player data is null.");
-      }
+      final data = playerData(e.key)!;
       data.requestingScoreFrom[peerId] = e.value; // Score
     }
     _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult handleRefuseRequestedScore(String peerId) {
-    final data = playerData(peerId);
-    if (data == null) {
-      return CommandResult(
-          CommandResultStateCode.error, "player data is null.");
-    }
-    data.requestingScoreFrom.clear();
-    _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
-  }
+  handleAcceptRequestedScore({required String peerId}) {
+    _checkState(peerId, needMyTrue: false);
 
-  CommandResult handleAcceptRequestedScore(String peerId) {
-    final data = playerData(peerId);
-    if (data == null) {
-      return CommandResult(
-          CommandResultStateCode.error, "player data is null.");
-    }
-
+    final data = playerData(peerId)!;
     for (final e in data.requestingScoreFrom.entries) {
       final requester = e.key;
       final score = e.value;
 
-      final requesterData = playerData(requester);
-      if (requesterData == null) {
-        return CommandResult(
-            CommandResultStateCode.error, "Requester data is null.");
-      }
+      final requesterData = playerData(requester)!;
       requesterData.score -= score;
       data.score += score;
     }
 
     data.requestingScoreFrom.clear();
     _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult handleRequestNextHand(String peerId) {
+  _checkState(String peerId,
+      {bool needMyTrue = true, List<String> allowTableState = const []}) {
     final data = playerData(peerId);
     if (data == null) {
-      return CommandResult(
-          CommandResultStateCode.error, "player data is null.");
+      throw StateError("No Player(${peerId}) data.");
     }
+    if (needMyTrue && turnedPeerId != peerId) {
+      throw StateError("Not your${peerId}) turn.");
+    }
+    if (allowTableState.isNotEmpty && !allowTableState.contains(state)) {
+      throw StateError("Not allowed state(${state}).");
+    }
+  }
+
+  handleRefuseRequestedScore({required String peerId}) {
+    _checkState(peerId, needMyTrue: false);
+    final data = playerData(peerId)!;
+    data.requestingScoreFrom.clear();
+    _updateTableListener();
+  }
+
+  handleRequestNextHand({required String peerId}) {
+    _checkState(peerId, needMyTrue: false);
+
+    final data = playerData(peerId)!;
     data.waitingNextHand = true;
-    print("handleRequestNextHand: ${peerId}: ${data.waitingNextHand}");
     _updateTableListener();
 
     // 全員が次局待機状態であれば次局を開始する。
@@ -438,73 +473,49 @@ class Table extends TableData {
     if (waitingPlayerCount == 4) {
       Future.delayed(const Duration(seconds: 1)).then((value) => nextHand());
     }
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult handleOpenTilesCmd(String peerId) {
-    final data = playerData(peerId);
-    if (data == null) {
-      return CommandResult(
-          CommandResultStateCode.error, "player data is null.");
-    }
+  handleOpenTiles({required String peerId}) {
+    _checkState(peerId, needMyTrue: false);
+    final data = playerData(peerId)!;
     data.openTiles = true;
     _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult handleDrawTileCmd(String peerId) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.refuse, "not your turn.");
-    }
-    if (state != "drawable") {
-      return CommandResult(
-          CommandResultStateCode.refuse, "not drawable state.");
-    }
+  handleDrawTile({required String peerId}) {
+    if (turnedPeerId != peerId) throw NotYourTurnException();
 
-    print("handleDrawTileCmd: ${peerId}: ${wallTiles}");
-    if (wallTiles.isEmpty) {
-      return CommandResult(CommandResultStateCode.error, "wallTiles is empty.");
-    }
+    _checkState(peerId, allowTableState: [TableState.drawable]);
 
-    final data = playerData(peerId);
-    if (data == null) {
-      return CommandResult(
-          CommandResultStateCode.error, "player data is null.");
-    }
+    final data = playerData(peerId)!;
     if (data.drawnTile.isNotEmpty) {
-      return CommandResult(
-          CommandResultStateCode.error, "drawnTile is not empty.");
+      throw StateError("Drawn tile is not empty.");
+    }
+    if (wallTiles.isEmpty) {
+      throw StateError("Wall tiles is empty.");
     }
 
     final drawnTile = wallTiles.removeLast();
     data.drawnTile.add(drawnTile);
 
-    state = "waitToDiscard";
+    state = TableState.waitToDiscard;
     _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult handleDiscardTileCmd(String peerId, int tile) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.error, "not your turn.");
-    }
-    final discardableState = ["waitToDiscard", "selectingTilesForOpenKan"];
-    if (!discardableState.contains(state)) {
-      return CommandResult(
-          CommandResultStateCode.error, "not discardable state.");
-    }
+  handleDiscardTile({required String peerId, required int tile}) {
+    _checkState(peerId, allowTableState: [
+      TableState.waitToDiscard,
+      TableState.waitToDiscardForPongOrChow,
+      TableState.waitToDiscardForOpenKan,
+      TableState.waitToDiscardForCloseKan,
+      TableState.waitToDiscardForLateKan,
+    ]);
 
-    final data = playerData(peerId);
-    if (data == null) {
-      return CommandResult(
-          CommandResultStateCode.error, "player data is null.");
-    }
-
+    final data = playerData(peerId)!;
     data.tiles.addAll(data.drawnTile);
     data.drawnTile.clear();
     if (!data.tiles.contains(tile)) {
-      return CommandResult(
-          CommandResultStateCode.error, "discarded tile not in your tiles.");
+      throw StateError("Discard tile does not exist.");
     }
 
     data.tiles.remove(tile);
@@ -515,133 +526,109 @@ class Table extends TableData {
     lastDiscardedPlayerPeerID = turnedPeerId;
 
     // 明槓の場合は 打牌後にドラをめくる。
-    if (state == "selectingTilesForOpenKan") {
+    if ([
+      TableState.waitToDiscardForCloseKan,
+      TableState.waitToDiscardForLateKan
+    ].contains(state)) {
       countOfKan += 1;
     }
+
     _nextTurn(turnedPeerId);
     state = TableState.drawable;
     _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdPong(String peerId) {
-    if (turnedPeerId == peerId) {
-      return CommandResult(CommandResultStateCode.refuse, "in your turn.");
-    }
-    if (state != "drawable") {
-      return CommandResult(
-          CommandResultStateCode.refuse, "not drawable state.");
-    }
-
-    state = "selectingTilesForPong";
+  handlePong({required String peerId}) {
+    if (state != TableState.drawable) throw RefuseException("");
+    state = TableState.selectingTilesForPong;
     _turnTo(peerId);
     _updateTableListener();
-
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdSelectedTilesForPongOrChow(
-      String peerId, List<int> selectedTiles) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.error, "not your turn.");
-    }
-    final selectingState = ["selectingTilesForPong", "selectTilesForChow"];
-    if (selectingState.contains(state)) {
-      return CommandResult(
-          CommandResultStateCode.error, "not selecting state.");
-    }
+  handleChow({required String peerId}) {
+    if (state != TableState.drawable) throw RefuseException("");
+    state = TableState.selectingTilesForChow;
+    _turnTo(peerId);
+    _updateTableListener();
+  }
+
+  handleSetSelectedTilesForPongOrChow(
+      {required String peerId, required List<dynamic> selectedTiles}) {
+    print("handleSetSelectedTilesForPongOrChow: E");
+    _checkState(peerId, allowTableState: [
+      TableState.selectingTilesForPong,
+      TableState.selectingTilesForChow
+    ]);
+
     if (selectedTiles.length != 2) {
-      return CommandResult(
-          CommandResultStateCode.error, "bad selected tiles quantity.");
+      throw ArgumentError("bad selected tiles quantity.");
     }
 
-    state = "waitToDiscardForPongOrChow";
-    _setSelectedTiles(peerId, selectedTiles, "pong-chow");
+    state = TableState.waitToDiscardForPongOrChow;
 
-    return CommandResult(CommandResultStateCode.ok, "");
-  }
-
-  CommandResult cmdOpenKan(String peerId) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.error, "not your turn.");
-    }
-    if (state == "drawable") {
-      return CommandResult(CommandResultStateCode.error, "not drawable state.");
-    }
-
-    state = "selectingTilesForOpenKan";
-    _turnTo(peerId);
+    _setSelectedTiles(
+        peerId, selectedTiles.map((e) => e as int).toList(), "pong-chow");
     _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
+
+    print("handleSetSelectedTilesForPongOrChow: X");
   }
 
-  CommandResult cmdCloseKan(String peerId) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.error, "not your turn.");
-    }
-    state = "selectingTilesForCloseKan";
+  handleOpenKan({required String peerId}) {
+    if (state != TableState.drawable) throw RefuseException("");
+    if (turnedPeerId == peerId) throw StateError("In your turn.");
+
+    state = TableState.selectingTilesForOpenKan;
     _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdLateKan(String peerId) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.error, "not your turn.");
-    }
-    state = "selectingTilesForLateKan";
+  handleSelfKan({required String peerId}) {
+    _checkState(peerId, allowTableState: [
+      TableState.waitToDiscard,
+    ]);
+
+    state = TableState.selectingCloseOrLateKan;
     _updateTableListener();
-    return CommandResult(CommandResultStateCode.ok, "");
   }
 
-  CommandResult cmdSetSelectedTilesForOpenKan(
-      String peerId, List<int> selectedTiles) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.error, "not your turn.");
-    }
-    final selectingState = ["selectingTilesForOpenKan"];
-    if (selectingState.contains(state)) {
-      return CommandResult(
-          CommandResultStateCode.error, "not selecting state.");
-    }
+  handleCloseKan({required String peerId}) {
+    _checkState(peerId, allowTableState: [
+      TableState.selectingCloseOrLateKan,
+    ]);
+    state = TableState.selectingTilesForCloseKan;
+    _updateTableListener();
+  }
+
+  handleLateKan({required String peerId}) {
+    if (turnedPeerId != peerId) throw StateError("Not your turn.");
+    state = TableState.selectingTilesForLateKan;
+    _updateTableListener();
+  }
+
+  handleSetSelectedTilesForOpenKan(String peerId, List<int> selectedTiles) {
+    _checkState(peerId, needMyTrue: false, allowTableState: [
+      TableState.selectingTilesForOpenKan,
+    ]);
     if (selectedTiles.length != 3) {
-      return CommandResult(
-          CommandResultStateCode.error, "bad selected tiles quantity.");
-    }
-
-    final data = playerData(peerId);
-    if (data == null) {
-      return CommandResult(
-          CommandResultStateCode.error, "player data is null.");
+      throw ArgumentError("bad selected tiles quantity.");
     }
 
     _setSelectedTiles(peerId, selectedTiles, "open-kan");
 
+    final data = playerData(peerId)!;
     data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
-
-    return CommandResult(CommandResultStateCode.ok, "");
+    _updateTableListener();
   }
 
-  CommandResult cmdSetSelectedTilesForCloseKan(
-      String peerId, List<int> selectedTiles) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.error, "not your turn.");
-    }
-    final selectingState = ["selectingTilesForCloseKan"];
-    if (selectingState.contains(state)) {
-      return CommandResult(
-          CommandResultStateCode.error, "not selecting state.");
-    }
+  handleSetSelectedTilesForCloseKan(String peerId, List<int> selectedTiles) {
+    _checkState(peerId, allowTableState: [
+      TableState.selectingTilesForCloseKan,
+    ]);
     if (selectedTiles.length != 4) {
-      return CommandResult(
-          CommandResultStateCode.error, "bad selected tiles quantity.");
+      throw ArgumentError("bad selected tiles quantity.");
     }
 
-    final data = playerData(peerId);
-    if (data == null) {
-      return CommandResult(
-          CommandResultStateCode.error, "player data is null.");
-    }
+    final data = playerData(peerId)!;
 
     // 鳴き牌登録
     data.calledTiles.add(CalledTiles(-1, peerId, selectedTiles, "close-kan"));
@@ -654,25 +641,15 @@ class Table extends TableData {
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
     countOfKan += 1;
 
-    state = "waitToDiscardForCloseKan";
-    return CommandResult(CommandResultStateCode.ok, "");
+    state = TableState.waitToDiscardForCloseKan;
   }
 
-  CommandResult cmdSetSelectedTilesForLateKan(String peerId, tile) {
-    if (turnedPeerId != peerId) {
-      return CommandResult(CommandResultStateCode.error, "not your turn.");
-    }
-    final selectingState = ["selectingTilesForCloseKan"];
-    if (selectingState.contains(state)) {
-      return CommandResult(
-          CommandResultStateCode.error, "not selecting state.");
-    }
+  handleSetSelectedTilesForLateKan(String peerId, tile) {
+    _checkState(peerId, allowTableState: [
+      TableState.selectingTilesForLateKan,
+    ]);
 
-    final data = playerData(peerId);
-    if (data == null) {
-      return CommandResult(
-          CommandResultStateCode.error, "player data is null.");
-    }
+    final data = playerData(peerId)!;
 
     var targetIndex = -1;
     for (var i = 0; i < data.calledTiles.length; i++) {
@@ -680,10 +657,7 @@ class Table extends TableData {
         targetIndex = i;
       }
     }
-    if (targetIndex < 0) {
-      return CommandResult(
-          CommandResultStateCode.error, "not selecting state.");
-    }
+    if (targetIndex < 0) throw ArgumentError("Bad selected tile.");
 
     // ポンした刻子を小明槓にして入れ直す。
     final pongTiles = data.calledTiles[targetIndex];
@@ -699,20 +673,19 @@ class Table extends TableData {
     data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
 
-    state = "waitToDiscardForLateKan";
-    return CommandResult(CommandResultStateCode.ok, "");
+    state = TableState.waitToDiscardForLateKan;
   }
 
   void _setSelectedTiles(
       String peerId, List<int> selectedTiles, String callAs) {
     // 鳴き牌を持ち牌から除外
-    final data = playerData(peerId);
-    assert(data != null);
-    if (data == null) return;
-
+    final data = playerData(peerId)!;
     for (final tile in selectedTiles) {
       data.tiles.remove(tile);
     }
+
+    print(
+        "_setSelectedTiles: peerId: ${peerId}, lastDiscardedPlayerPeerID: ${lastDiscardedPlayerPeerID}");
 
     // 鳴き牌登録
     data.calledTiles.add(CalledTiles(

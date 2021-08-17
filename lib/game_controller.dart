@@ -21,7 +21,6 @@ class Game {
   Game(this.roomId, this.onChangedState) {
     table = Table(_tableOnUpdateTable);
     skyWay.newPeer(skyWayKey, 3, (peerId) {
-      print("newPeer ${peerId}");
       _commandHandler = CommandHandler(skyWay);
       myPeerId = peerId;
       state = State.onJoiningRoom;
@@ -45,6 +44,7 @@ class Game {
   late String myPeerId;
   late Table table;
   late CommandHandler _commandHandler;
+  bool isTradingScore = false;
 
   State state = State.onCreatingMyPeer;
 
@@ -68,69 +68,142 @@ class Game {
     return _commandHandler.canCommand();
   }
 
-  Future<void> drawTile() async {
-    print("drawTile(): ${myPeerId}, ${_isOwner()}");
-    if (_isOwner()) {
-      final result = table.handleDrawTileCmd(myPeerId);
-      _handleCommandResult(result);
-    } else {
-      _commandHandler
-          .sendCommand(myPeerId, {"command": "drawTile"}).then((result) {
-        print("drawTile(): result: ${result}");
-        _handleCommandResult(result);
-      });
+  Map<String, Function> commandMap() {
+    return <String, Function>{
+      "drawTile": table.handleDrawTile,
+      "discardTile": table.handleDiscardTile,
+      "callRon": table.handleRon,
+      "callPong": table.handlePong,
+      "callChow": table.handleChow,
+      "callOpenKan": table.handleOpenKan,
+      "callSelfKan": table.handleSelfKan,
+      "callCloseKan": table.handleCloseKan,
+      "callLateKan": table.handleLateKan,
+      "cancelCall": table.handleCancelCall,
+      "setSelectedTilesForPongOrChow":
+          table.handleSetSelectedTilesForPongOrChow,
+      "setSelectedTilesForOpenKan": table.handleSetSelectedTilesForOpenKan,
+      "setSelectedTilesForCloseKan": table.handleSetSelectedTilesForCloseKan,
+      "setSelectedTilesForLateKan": table.handleSetSelectedTilesForLateKan,
+      "openMyWall": table.handleOpenTiles,
+      "requestScore": table.handleRequestScore,
+      "acceptRequestedScore": table.handleAcceptRequestedScore,
+      "refuseRequestedScore": table.handleRefuseRequestedScore,
+      "requestNextHand": table.handleRequestNextHand,
+      "finishHand": table.handleFinishHand,
+    };
+  }
+
+  Future<void> cancelCall() async {
+    _handleCommandResult(await _handleCmd("cancelCall", myPeerId));
+  }
+
+  Future<void> pong() async {
+    _handleCommandResult(await _handleCmd("callPong", myPeerId));
+  }
+
+  Future<void> chow() async {
+    _handleCommandResult(await _handleCmd("callChow", myPeerId));
+  }
+
+  Future<void> openKan() async {
+    _handleCommandResult(await _handleCmd("callOpenKan", myPeerId));
+  }
+
+  Future<void> selfKan() async {
+    _handleCommandResult(await _handleCmd("callSelfKan", myPeerId));
+  }
+
+  Future<void> closeKan() async {
+    _handleCommandResult(await _handleCmd("callCloseKan", myPeerId));
+  }
+
+  Future<void> lateKan() async {
+    _handleCommandResult(await _handleCmd("callLateKan", myPeerId));
+  }
+
+  Future<void> setSelectedTilesForPongOrChow(List<int> selectedTiles) async {
+    _handleCommandResult(await _handleCmd(
+        "setSelectedTilesForPongOrChow", myPeerId,
+        args: {"selectedTiles": selectedTiles}));
+  }
+
+  Future<void> setSelectedTilesForOpenKan() async {
+    _handleCommandResult(
+        await _handleCmd("setSelectedTilesForOpenKan", myPeerId));
+  }
+
+  Future<void> setSelectedTilesForCloseKan() async {
+    _handleCommandResult(
+        await _handleCmd("setSelectedTilesForCloseKan", myPeerId));
+  }
+
+  Future<void> setSelectedTilesForLateKan() async {
+    _handleCommandResult(
+        await _handleCmd("setSelectedTilesForLateKan", myPeerId));
+  }
+
+  void setSelectedTiles(List<int> selectedTiles) {
+    if (table.state == TableState.selectingTilesForPong) {
+      setSelectedTilesForPongOrChow(selectedTiles);
     }
+    if (table.state == TableState.selectingTilesForChow) {
+      setSelectedTilesForPongOrChow(selectedTiles);
+    }
+    if (table.state == TableState.selectingTilesForOpenKan) {}
+    if (table.state == TableState.selectingTilesForCloseKan) {}
+    if (table.state == TableState.selectingTilesForLateKan) {}
+  }
+
+  Future<CommandResult> _handleCmd(String commandName, String peerId,
+      {Map<String, dynamic> args = const {}, viaNet = false}) async {
+    // Ownerプレーヤーから直接呼ばれた場合は、公平さのため通信時間を考慮した待機時間を入れる。
+    if (!viaNet) await Future.delayed(const Duration(microseconds: 50));
+
+    print("_handleCmd: ${commandName}: ${args}");
+    if (viaNet) print("viaNet: _handleCmd: ${commandName}: ${args}");
+    if (_isOwner()) {
+      final Function f = commandMap()[commandName]!;
+      final namedArguments = <Symbol, dynamic>{const Symbol("peerId"): peerId};
+      namedArguments
+          .addAll(args.map((key, value) => MapEntry(Symbol(key), value)));
+      try {
+        Function.apply(f, [], namedArguments);
+      } on StateError catch (e) {
+        return CommandResult(CommandResultStateCode.error, e.message);
+      } on NotYourTurnException catch (e) {
+        return CommandResult(CommandResultStateCode.refuse, e.message);
+      }
+      return CommandResult(CommandResultStateCode.ok, "");
+    }
+    return _commandHandler.sendCommand(peerId, commandName, args);
+  }
+
+  void _handleCommandResult(CommandResult result) {
+    print("_handleCommandResult: ${result.message}");
+    onChangedState();
+  }
+
+  Future<void> drawTile() async {
+    _handleCommandResult(await _handleCmd("drawTile", myPeerId));
   }
 
   Future<void> discardTile(int tile) async {
-    if (_isOwner()) {
-      final result = table.handleDiscardTileCmd(myPeerId, tile);
-      _handleCommandResult(result);
-    } else {
-      _commandHandler.sendCommand(myPeerId,
-          {"command": "discardTile", "commandArgs:tile": tile}).then((result) {
-        _handleCommandResult(result);
-      });
-    }
+    _handleCommandResult(
+        await _handleCmd("discardTile", myPeerId, args: {"tile": tile}));
   }
 
   Future<void> openMyWall() async {
-    if (_isOwner()) {
-      final result = table.handleOpenTilesCmd(myPeerId);
-      _handleCommandResult(result);
-    } else {
-      _commandHandler
-          .sendCommand(myPeerId, {"command": "openMyWall"}).then((result) {
-        _handleCommandResult(result);
-      });
-    }
+    _handleCommandResult(await _handleCmd("openMyWall", myPeerId));
   }
 
   Future<void> ron() async {
-    if (_isOwner()) {
-      final result = table.handleRonCmd(myPeerId);
-      _handleCommandResult(result);
-    } else {
-      _commandHandler
-          .sendCommand(myPeerId, {"command": "handleRonCmd"}).then((result) {
-        _handleCommandResult(result);
-      });
-    }
+    _handleCommandResult(await _handleCmd("ron", myPeerId));
   }
 
   Future<void> finishHand() async {
-    if (_isOwner()) {
-      final result = table.handleFinishHandCmd(myPeerId);
-      _handleCommandResult(result);
-    } else {
-      _commandHandler
-          .sendCommand(myPeerId, {"command": "handleFinishHandCmd"}).then((result) {
-        _handleCommandResult(result);
-      });
-    }
+    _handleCommandResult(await _handleCmd("finishHand", myPeerId));
   }
-
-  bool isTradingScore = false;
 
   void startTradingScore() {
     isTradingScore = true;
@@ -143,59 +216,22 @@ class Game {
   }
 
   Future<void> requestScore(Map<String, int> request) async {
-    print("requestTradingScore: ${request}");
-    if (_isOwner()) {
-      final result = table.handleRequestScore(myPeerId, request);
-      _handleCommandResult(result);
-    } else {
-      _commandHandler.sendCommand(myPeerId, {
-        "command": "requestScore",
-        "commandArgs:request": request //Map<String, int> request
-      }).then((result) {
-        _handleCommandResult(result);
-      });
-    }
+    _handleCommandResult(
+        await _handleCmd("requestScore", myPeerId, args: {"request": request}));
     isTradingScore = false;
     onChangedState();
   }
 
   Future<void> acceptRequestedScore() async {
-    if (_isOwner()) {
-      final result = table.handleAcceptRequestedScore(myPeerId);
-      _handleCommandResult(result);
-    } else {
-      _commandHandler.sendCommand(myPeerId, {
-        "command": "acceptRequestedScore",
-      }).then((result) {
-        _handleCommandResult(result);
-      });
-    }
+    _handleCommandResult(await _handleCmd("acceptRequestedScore", myPeerId));
   }
 
   Future<void> refuseRequestedScore() async {
-    if (_isOwner()) {
-      final result = table.handleRefuseRequestedScore(myPeerId);
-      _handleCommandResult(result);
-    } else {
-      _commandHandler.sendCommand(myPeerId, {
-        "command": "refuseRequestedScore",
-      }).then((result) {
-        _handleCommandResult(result);
-      });
-    }
+    _handleCommandResult(await _handleCmd("refuseRequestedScore", myPeerId));
   }
 
   Future<void> requestNextHand() async {
-    if (_isOwner()) {
-      final result = table.handleRequestNextHand(myPeerId);
-      _handleCommandResult(result);
-    } else {
-      _commandHandler.sendCommand(myPeerId, {
-        "command": "requestNextHand",
-      }).then((result) {
-        _handleCommandResult(result);
-      });
-    }
+    _handleCommandResult(await _handleCmd("requestNextHand", myPeerId));
   }
 
   void _skyWayOnOpen() {
@@ -249,82 +285,21 @@ class Game {
   }
 
   void _skyWayOnUpdateTable(Map<String, dynamic> tableData) {
-    print("_skyWayOnUpdateTable: ${myName()} ${tableData}");
+    // print("_skyWayOnUpdateTable: ${myName()} ${tableData}");
     table.applyData(tableData);
     onChangedState();
-  }
-
-  bool _isOwner() {
-    // ピアIDの並び順でゲームオーナーを決定する。
-    final peers = member.keys.toList();
-    peers.sort();
-    return peers.first == myPeerId;
-  }
-
-  void _startGame() {
-    table.startGame(member);
-    table.nextLeader();
   }
 
   void _skyWayOnReceiveCommand(Map<String, dynamic> data) {
     if (!_isOwner()) return; // コマンドの処理はオーナのみが行う。
 
-    final command = data["command"] as String;
     final commander = data["commander"] as String;
+    final commandName = data["commandName"] as String;
+    final commandArgs = data["commandArgs"] as Map<String, dynamic>;
 
-    if (command == "drawTile") {
-      _commandHandler.sendCommandResult(
-          data, table.handleDrawTileCmd(commander));
-    }
-
-    if (command == "discardTile") {
-      final tile = data["commandArgs:tile"] as int;
-      _commandHandler.sendCommandResult(
-          data, table.handleDiscardTileCmd(commander, tile));
-    }
-
-    if (command == "openMyWall") {
-      _commandHandler.sendCommandResult(
-          data, table.handleOpenTilesCmd(commander));
-    }
-
-    if (command == "requestScore") {
-      final request = (data["commandArgs:request"] as Map<String, dynamic>)
-          .map((key, value) => MapEntry(key, value as int));
-      print("requestScore: ${request}");
-      _commandHandler.sendCommandResult(
-          data, table.handleRequestScore(commander, request));
-    }
-
-    if (command == "acceptRequestedScore") {
-      _commandHandler.sendCommandResult(
-          data, table.handleAcceptRequestedScore(commander));
-    }
-
-    if (command == "refuseRequestedScore") {
-      _commandHandler.sendCommandResult(
-          data, table.handleRefuseRequestedScore(commander));
-    }
-
-    if (command == "requestNextHand") {
-      _commandHandler.sendCommandResult(
-          data, table.handleRequestNextHand(commander));
-    }
-
-    if (command == "handleRonCmd") {
-      _commandHandler.sendCommandResult(
-          data, table.handleRonCmd(commander));
-    }
-
-    if (command == "handleFinishHandCmd") {
-      _commandHandler.sendCommandResult(
-          data, table.handleFinishHandCmd(commander));
-    }
-  }
-
-  void _handleCommandResult(CommandResult result) {
-    print("_handleCommandResult: ${result.message}");
-    onChangedState();
+    print("_skyWayOnReceiveCommand: ${commandArgs}");
+    _handleCmd(commandName, commander, args: commandArgs, viaNet: true)
+        .then((result) => _commandHandler.sendCommandResult(data, result));
   }
 
   // caller:self or skyWay
@@ -344,13 +319,23 @@ class Game {
     onChangedState();
   }
 
+  bool _isOwner() {
+    // ピアIDの並び順でゲームオーナーを決定する。
+    final peers = member.keys.toList();
+    peers.sort();
+    return peers.first == myPeerId;
+  }
+
+  void _startGame() {
+    table.startGame(member);
+    table.nextLeader();
+  }
+
   void _tableOnUpdateTable() {
     final tmp = <String, dynamic>{
       "type": "updateTableData",
       "data": table.toMap(),
     };
-    // print("_tableOnUpdateTable: ${myName()}: ${jsonEncode(tmp)}");
-
     skyWay.sendData(jsonEncode(tmp));
     onChangedState();
   }

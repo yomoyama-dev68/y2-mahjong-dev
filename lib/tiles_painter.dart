@@ -348,6 +348,7 @@ class TilesPainter {
   ) {
     final peerId = _tableData.playerDataMap.keys.toList()[direction];
     final callDirection = _tableData.direction(peerId, tiles.calledFrom);
+    print("peerId: ${peerId}, calledFrom:${tiles.calledFrom}");
     assert(callDirection != 0);
     final calledTileDirection = (direction + 1) % 4;
 
