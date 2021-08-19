@@ -128,19 +128,22 @@ class Game {
         args: {"selectedTiles": selectedTiles}));
   }
 
-  Future<void> setSelectedTilesForOpenKan() async {
-    _handleCommandResult(
-        await _handleCmd("setSelectedTilesForOpenKan", myPeerId));
+  Future<void> setSelectedTilesForOpenKan(List<int> selectedTiles) async {
+    _handleCommandResult(await _handleCmd(
+        "setSelectedTilesForOpenKan", myPeerId,
+        args: {"selectedTiles": selectedTiles}));
   }
 
-  Future<void> setSelectedTilesForCloseKan() async {
-    _handleCommandResult(
-        await _handleCmd("setSelectedTilesForCloseKan", myPeerId));
+  Future<void> setSelectedTilesForCloseKan(List<int> selectedTiles) async {
+    _handleCommandResult(await _handleCmd(
+        "setSelectedTilesForCloseKan", myPeerId,
+        args: {"selectedTiles": selectedTiles}));
   }
 
-  Future<void> setSelectedTilesForLateKan() async {
-    _handleCommandResult(
-        await _handleCmd("setSelectedTilesForLateKan", myPeerId));
+  Future<void> setSelectedTilesForLateKan(int tile) async {
+    _handleCommandResult(await _handleCmd(
+        "setSelectedTilesForLateKan", myPeerId,
+        args: {"tile": tile}));
   }
 
   void setSelectedTiles(List<int> selectedTiles) {
@@ -150,9 +153,15 @@ class Game {
     if (table.state == TableState.selectingTilesForChow) {
       setSelectedTilesForPongOrChow(selectedTiles);
     }
-    if (table.state == TableState.selectingTilesForOpenKan) {}
-    if (table.state == TableState.selectingTilesForCloseKan) {}
-    if (table.state == TableState.selectingTilesForLateKan) {}
+    if (table.state == TableState.selectingTilesForOpenKan) {
+      setSelectedTilesForOpenKan(selectedTiles);
+    }
+    if (table.state == TableState.selectingTilesForCloseKan) {
+      setSelectedTilesForCloseKan(selectedTiles);
+    }
+    if (table.state == TableState.selectingTilesForLateKan) {
+      setSelectedTilesForLateKan(selectedTiles[0]);
+    }
   }
 
   Future<CommandResult> _handleCmd(String commandName, String peerId,

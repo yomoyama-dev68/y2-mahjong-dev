@@ -113,9 +113,9 @@ class TilesPainter {
   void drawOpenedTilesPerDirection(List<DrawObject> drawObjects,
       tbl.PlayerData data, int direction, Offset originOffset) {
     final baseColPos =
-    isPortrait(direction) ? originOffset.dx : originOffset.dy;
+        isPortrait(direction) ? originOffset.dx : originOffset.dy;
     final baseRowPos =
-    isPortrait(direction) ? originOffset.dy : originOffset.dx;
+        isPortrait(direction) ? originOffset.dy : originOffset.dx;
 
     var varColPos = baseColPos;
     void __addDrawObject(int tile) {
@@ -135,6 +135,7 @@ class TilesPainter {
       varColPos += stepColPos(direction, image);
       if (direction == 3) varColPos -= tileThickness;
     }
+
     for (final tile in data.tiles) {
       __addDrawObject(tile);
     }
@@ -261,9 +262,12 @@ class TilesPainter {
     final baseDirection = keyList.indexOf(myPeerId);
     for (var direction = 0; direction < 4; direction++) {
       final index = (baseDirection + direction) % 4;
-      final data = _tableData.playerDataMap[keyList[index]]!;
+      final peerId = keyList[index];
+      final data = _tableData.playerDataMap[peerId]!;
+      // print("drawCalledTiles: myPeerId ${myPeerId}, peerId: ${peerId}, direction: ${direction}");
+
       drawCalledTilesPerDirection(
-          drawObjects, data, direction, offsetForCall(direction, size));
+          drawObjects, peerId, data, direction, offsetForCall(direction, size));
     }
 
     drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
@@ -291,12 +295,12 @@ class TilesPainter {
     return const Offset(0, 0);
   }
 
-  void drawCalledTilesPerDirection(List<DrawObject> drawObjects,
+  void drawCalledTilesPerDirection(List<DrawObject> drawObjects, String peerId,
       tbl.PlayerData data, int direction, Offset baseOffset) {
     for (var index = 0; index < data.calledTiles.length; index++) {
       final tiles = data.calledTiles[index];
       baseOffset = drawCalledTilesPerDirection2(
-          drawObjects, tiles, direction, baseOffset);
+          drawObjects, peerId, tiles, direction, baseOffset);
       baseOffset = baseOffset + stepForCall(direction);
     }
   }
@@ -343,17 +347,28 @@ class TilesPainter {
   }
 
   List<List<int>> createCalledTileDirectionMap(
+    String peerId,
     tbl.CalledTiles tiles,
     int direction,
   ) {
-    final peerId = _tableData.playerDataMap.keys.toList()[direction];
+
+    final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
+    if (tiles.callAs == "close-kan") {
+      tileDirectionMap.add([direction, -1, 0]);
+      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
+      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
+      tileDirectionMap.add([direction, -1, 0]);
+      return tileDirectionMap;
+    }
+
+    //final peerId = _tableData.playerDataMap.keys.toList()[direction];
     final callDirection = _tableData.direction(peerId, tiles.calledFrom);
-    print("peerId: ${peerId}, calledFrom:${tiles.calledFrom}");
+    // print("peerId: ${peerId}, calledFrom: ${tiles.calledFrom}, callDirection: ${callDirection}, direction: ${direction}, callAs: ${tiles.callAs}");
     assert(callDirection != 0);
     final calledTileDirection = (direction + 1) % 4;
 
-    final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
-    if (tiles.callAs == "pong" || tiles.callAs == "chow") {
+
+    if (tiles.callAs == "pong-chow") {
       tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
       tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
       tileDirectionMap.insert(
@@ -372,13 +387,6 @@ class TilesPainter {
       }
     }
 
-    if (tiles.callAs == "close-kan") {
-      tileDirectionMap.add([direction, -1, 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-      tileDirectionMap.add([direction, -1, 0]);
-    }
-
     if (tiles.callAs == "late-kan") {
       tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
       tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
@@ -392,8 +400,9 @@ class TilesPainter {
   }
 
   Offset drawCalledTilesPerDirection2(List<DrawObject> drawObjects,
-      tbl.CalledTiles tiles, int direction, Offset baseOffset) {
-    final tileDirectionMap = createCalledTileDirectionMap(tiles, direction);
+      String peerId, tbl.CalledTiles tiles, int direction, Offset baseOffset) {
+    final tileDirectionMap =
+        createCalledTileDirectionMap(peerId, tiles, direction);
     var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
     var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
 

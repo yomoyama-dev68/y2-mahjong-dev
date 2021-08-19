@@ -46,7 +46,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   @override
   Widget build(BuildContext context) {
     final tblState = g().table.state;
-    print("build: "+ tblState);
+    print("build: " + tblState);
 
     if (tblState == tbl.TableState.notSetup ||
         tblState == tbl.TableState.doingSetupHand) {
@@ -61,15 +61,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: widgets);
     }
 
-    const waitToDiscard = [
-      tbl.TableState.waitToDiscard,
-      tbl.TableState.waitToDiscardForPongOrChow,
-      tbl.TableState.waitToDiscardForOpenKan,
-      tbl.TableState.waitToDiscardForCloseKan,
-      tbl.TableState.waitToDiscardForLateKan
-    ];
-
-    if (waitToDiscard.contains(tblState)) {
+    if (tblState == tbl.TableState.waitToDiscard) {
       final cmdWidgets = isMyTurn()
           ? _buildRibbonForWaitingSelfDiscard()
           : _buildRibbonForWaitingOtherDiscard();
@@ -80,6 +72,18 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       ];
       if (isMyTurn()) rowWidgets.add(_buildMyWall());
       return Column(children: rowWidgets);
+    }
+
+    const waitToDiscardForCall = [
+      tbl.TableState.waitToDiscardForPongOrChow,
+      tbl.TableState.waitToDiscardForOpenKan,
+      tbl.TableState.waitToDiscardForCloseKan,
+      tbl.TableState.waitToDiscardForLateKan
+    ];
+    if (waitToDiscardForCall.contains(tblState)) {
+      final cmdWidgets =
+          isMyTurn() ? [_buildMyWall()] : _buildRibbonForWaitingOtherDiscard();
+      return Column(children: cmdWidgets);
     }
 
     const selectingTiles = [
@@ -93,6 +97,19 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     if (selectingTiles.contains(tblState)) {
       final cmdWidgets = isMyTurn()
           ? _buildRibbonForSelectingTiles()
+          : _buildRibbonForWaitingOtherDiscard();
+      final rowWidgets = <Widget>[
+        Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: cmdWidgets),
+      ];
+      if (isMyTurn()) rowWidgets.add(_buildMyWall());
+      return Column(children: rowWidgets);
+    }
+
+    if (tblState == tbl.TableState.selectingCloseOrLateKan) {
+      final cmdWidgets = isMyTurn()
+          ? _buildRibbonForSelectingCloseOrLateKan()
           : _buildRibbonForWaitingOtherDiscard();
       final rowWidgets = <Widget>[
         Row(
@@ -151,7 +168,6 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       _buildButtonForCallCmd("ポン", g().pong),
       _buildButtonForCallCmd("チー", g().chow),
       _buildButtonForCallCmd("カン", g().openKan),
-      _buildButtonForCallCmd("ツモ", null)
     ];
   }
 
@@ -181,8 +197,15 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
 
   List<Widget> _buildRibbonForSelectingTiles() {
     return [
-      _buildButtonForCallCmd("キャンセル", g().cancelCall),
-      _buildButtonForCallCmd("OK", () => g().setSelectedTiles(_selectingTiles)),
+      _buildButtonForCallCmd("キャンセル", () {
+        g().cancelCall();
+        _selectingTiles.clear();
+      }),
+      _buildButtonForCallCmd("OK", () {
+        print("OK");
+        g().setSelectedTiles([..._selectingTiles]);
+        _selectingTiles.clear();
+      }),
     ];
   }
 
@@ -234,29 +257,36 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
 
   void _onTapTile(int tile) {
     final tblState = g().table.state;
+    print("_onTapTile E: ${tblState}: ${_selectingTiles}");
 
     setState(() {
-      if (tblState == tbl.TableState.waitToDiscard) {
+      const waitToDiscard = [
+        tbl.TableState.waitToDiscard,
+        tbl.TableState.waitToDiscardForPongOrChow,
+        tbl.TableState.waitToDiscardForOpenKan,
+        tbl.TableState.waitToDiscardForCloseKan,
+        tbl.TableState.waitToDiscardForLateKan
+      ];
+      if (waitToDiscard.contains(tblState)) {
         _selectDiscardTile(tile);
       }
       int limit = _selectableTilesQuantity(tblState);
       if (limit > 0) _selectTile(tile, limit);
     });
+
+    print("_onTapTile X: ${tblState}: ${_selectingTiles}");
   }
 
   void _selectDiscardTile(int tile) {
     if (_selectingTiles.isEmpty) {
       _selectingTiles.add(tile);
-      return;
-    }
-
-    if (_selectingTiles.contains(tile)) {
-      _selectingTiles.clear();
+    } else if (_selectingTiles.contains(tile)) {
       g().discardTile(tile);
+      _selectingTiles.clear();
+    } else {
+      _selectingTiles.clear();
+      _selectingTiles.add(tile);
     }
-
-    _selectingTiles.clear();
-    _selectingTiles.add(tile);
   }
 
   int _selectableTilesQuantity(String tblState) {

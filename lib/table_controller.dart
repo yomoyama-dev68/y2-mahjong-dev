@@ -55,10 +55,10 @@ class CalledTiles {
   }
 
   bool canLateKanWith(int tile) {
-    if (selectedTiles.length != 3) return false;
+    final openTiles = [...selectedTiles, calledTile];
     final number = TileInfo(tile).number;
-    for (final selectedTile in selectedTiles) {
-      if (number != TileInfo(selectedTile).number) return false;
+    for (final openTile in openTiles) {
+      if (number != TileInfo(openTile).number) return false;
     }
     return true;
   }
@@ -527,7 +527,7 @@ class Table extends TableData {
 
     // 明槓の場合は 打牌後にドラをめくる。
     if ([
-      TableState.waitToDiscardForCloseKan,
+      TableState.waitToDiscardForOpenKan,
       TableState.waitToDiscardForLateKan
     ].contains(state)) {
       countOfKan += 1;
@@ -554,7 +554,6 @@ class Table extends TableData {
 
   handleSetSelectedTilesForPongOrChow(
       {required String peerId, required List<dynamic> selectedTiles}) {
-    print("handleSetSelectedTilesForPongOrChow: E");
     _checkState(peerId, allowTableState: [
       TableState.selectingTilesForPong,
       TableState.selectingTilesForChow
@@ -564,20 +563,19 @@ class Table extends TableData {
       throw ArgumentError("bad selected tiles quantity.");
     }
 
-    state = TableState.waitToDiscardForPongOrChow;
-
     _setSelectedTiles(
         peerId, selectedTiles.map((e) => e as int).toList(), "pong-chow");
-    _updateTableListener();
 
-    print("handleSetSelectedTilesForPongOrChow: X");
+    state = TableState.waitToDiscardForPongOrChow;
+    _updateTableListener();
   }
 
   handleOpenKan({required String peerId}) {
     if (state != TableState.drawable) throw RefuseException("");
-    if (turnedPeerId == peerId) throw StateError("In your turn.");
+    // if (turnedPeerId == peerId) throw StateError("In your turn.");
 
     state = TableState.selectingTilesForOpenKan;
+    _turnTo(peerId);
     _updateTableListener();
   }
 
@@ -604,7 +602,8 @@ class Table extends TableData {
     _updateTableListener();
   }
 
-  handleSetSelectedTilesForOpenKan(String peerId, List<int> selectedTiles) {
+  handleSetSelectedTilesForOpenKan(
+      {required String peerId, required List<dynamic> selectedTiles}) {
     _checkState(peerId, needMyTrue: false, allowTableState: [
       TableState.selectingTilesForOpenKan,
     ]);
@@ -612,15 +611,19 @@ class Table extends TableData {
       throw ArgumentError("bad selected tiles quantity.");
     }
 
-    _setSelectedTiles(peerId, selectedTiles, "open-kan");
+    _setSelectedTiles(
+        peerId, selectedTiles.map((e) => e as int).toList(), "open-kan");
 
     final data = playerData(peerId)!;
     data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
+
+    state = TableState.waitToDiscardForOpenKan;
     _updateTableListener();
   }
 
-  handleSetSelectedTilesForCloseKan(String peerId, List<int> selectedTiles) {
+  handleSetSelectedTilesForCloseKan(
+      {required String peerId, required List<dynamic> selectedTiles}) {
     _checkState(peerId, allowTableState: [
       TableState.selectingTilesForCloseKan,
     ]);
@@ -631,7 +634,8 @@ class Table extends TableData {
     final data = playerData(peerId)!;
 
     // 鳴き牌登録
-    data.calledTiles.add(CalledTiles(-1, peerId, selectedTiles, "close-kan"));
+    data.calledTiles.add(CalledTiles(
+        -1, peerId, selectedTiles.map((e) => e as int).toList(), "close-kan"));
     // 鳴き牌を持ち牌から除外
     for (final tile in selectedTiles) {
       data.tiles.remove(tile);
@@ -642,9 +646,11 @@ class Table extends TableData {
     countOfKan += 1;
 
     state = TableState.waitToDiscardForCloseKan;
+    _updateTableListener();
   }
 
-  handleSetSelectedTilesForLateKan(String peerId, tile) {
+  handleSetSelectedTilesForLateKan(
+      {required String peerId, required int tile}) {
     _checkState(peerId, allowTableState: [
       TableState.selectingTilesForLateKan,
     ]);
@@ -674,6 +680,7 @@ class Table extends TableData {
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
 
     state = TableState.waitToDiscardForLateKan;
+    _updateTableListener();
   }
 
   void _setSelectedTiles(
@@ -683,9 +690,6 @@ class Table extends TableData {
     for (final tile in selectedTiles) {
       data.tiles.remove(tile);
     }
-
-    print(
-        "_setSelectedTiles: peerId: ${peerId}, lastDiscardedPlayerPeerID: ${lastDiscardedPlayerPeerID}");
 
     // 鳴き牌登録
     data.calledTiles.add(CalledTiles(
