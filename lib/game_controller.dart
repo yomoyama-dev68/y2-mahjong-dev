@@ -17,6 +17,21 @@ enum State {
   onGame,
 }
 
+class HandLocalState {
+  bool onTradingScore = false;
+  bool onCalledTsumo = false;
+  bool onCalledRiichi = false;
+  String lastTurnedPeerId = "";
+  final selectingTiles = <int>[];
+
+  clear() {
+    onTradingScore = false;
+    onCalledTsumo = false;
+    onCalledRiichi = false;
+    selectingTiles.clear();
+  }
+}
+
 class Game {
   Game(this.roomId, this.onChangedState) {
     table = Table(_tableOnUpdateTable);
@@ -44,7 +59,7 @@ class Game {
   late String myPeerId;
   late Table table;
   late CommandHandler _commandHandler;
-  bool isTradingScore = false;
+  final handLocalState = HandLocalState();
 
   State state = State.onCreatingMyPeer;
 
@@ -72,6 +87,7 @@ class Game {
     return <String, Function>{
       "drawTile": table.handleDrawTile,
       "discardTile": table.handleDiscardTile,
+      "discardTileWithRiichi": table.handleDiscardTileWithRiichi,
       "callRon": table.handleRon,
       "callPong": table.handlePong,
       "callChow": table.handleChow,
@@ -95,6 +111,7 @@ class Game {
   }
 
   Future<void> cancelCall() async {
+    handLocalState.clear();
     _handleCommandResult(await _handleCmd("cancelCall", myPeerId));
   }
 
@@ -146,7 +163,10 @@ class Game {
         args: {"tile": tile}));
   }
 
-  void setSelectedTiles(List<int> selectedTiles) {
+  void setSelectedTiles() {
+    final selectedTiles = [...handLocalState.selectingTiles];
+    handLocalState.clear();
+
     if (table.state == TableState.selectingTilesForPong) {
       setSelectedTilesForPongOrChow(selectedTiles);
     }
@@ -198,8 +218,14 @@ class Game {
   }
 
   Future<void> discardTile(int tile) async {
-    _handleCommandResult(
-        await _handleCmd("discardTile", myPeerId, args: {"tile": tile}));
+    if (handLocalState.onCalledRiichi) {
+      _handleCommandResult(
+          await _handleCmd("discardTileWithRiichi", myPeerId, args: {"tile": tile}));
+    } else {
+      _handleCommandResult(
+          await _handleCmd("discardTile", myPeerId, args: {"tile": tile}));
+
+    }
   }
 
   Future<void> openMyWall() async {
@@ -214,20 +240,40 @@ class Game {
     _handleCommandResult(await _handleCmd("finishHand", myPeerId));
   }
 
+  Future<void> riichi() async {
+    handLocalState.onCalledRiichi = true;
+    onChangedState();
+  }
+
+  Future<void> cancelRiichi() async {
+    handLocalState.onCalledRiichi = false;
+    onChangedState();
+  }
+
+  void tsumo() {
+    handLocalState.onCalledTsumo = true;
+    onChangedState();
+  }
+
+  void cancelTsumo() {
+    handLocalState.onCalledTsumo = false;
+    onChangedState();
+  }
+
   void startTradingScore() {
-    isTradingScore = true;
+    handLocalState.onTradingScore = true;
     onChangedState();
   }
 
   void cancelTradingScore() {
-    isTradingScore = false;
+    handLocalState.onTradingScore = false;
     onChangedState();
   }
 
   Future<void> requestScore(Map<String, int> request) async {
     _handleCommandResult(
         await _handleCmd("requestScore", myPeerId, args: {"request": request}));
-    isTradingScore = false;
+    handLocalState.onTradingScore = false;
     onChangedState();
   }
 
@@ -240,6 +286,7 @@ class Game {
   }
 
   Future<void> requestNextHand() async {
+    handLocalState.clear();
     _handleCommandResult(await _handleCmd("requestNextHand", myPeerId));
   }
 
@@ -296,6 +343,13 @@ class Game {
   void _skyWayOnUpdateTable(Map<String, dynamic> tableData) {
     // print("_skyWayOnUpdateTable: ${myName()} ${tableData}");
     table.applyData(tableData);
+    // 自分のターンが終わったとき、自ターンのときの操作状態をクリアする。
+    if (handLocalState.lastTurnedPeerId == myPeerId &&
+        handLocalState.lastTurnedPeerId != table.turnedPeerId) {
+      handLocalState.clear();
+    }
+    handLocalState.lastTurnedPeerId = table.turnedPeerId;
+
     onChangedState();
   }
 

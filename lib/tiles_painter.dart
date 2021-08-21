@@ -520,10 +520,12 @@ class TilesPainter {
     if (myData.openTiles == false) drawMyWall(canvas, size, myData);
     drawOpenedTiles(canvas, size);
 
+    /*
     final paint = Paint();
     canvas.drawLine(
         Offset(size.width / 2, 0), Offset(size.width / 2, size.height), paint);
     canvas.drawLine(
         Offset(0, size.height / 2), Offset(size.width, size.height / 2), paint);
+     */
   }
 }

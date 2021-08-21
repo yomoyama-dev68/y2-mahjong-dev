@@ -82,6 +82,7 @@ class PlayerData {
     data.calledTiles.addAll(_toListCalledTiles(map["calledTiles"]));
     data.calledTilesByOther.addAll(_toListInt(map["calledTilesByOther"]));
     data.calledTilesByOther.addAll(_toListInt(map["calledTilesByOther"]));
+    data.riichiTile.addAll(_toListInt(map["riichiTile"]));
 
     return data;
   }
@@ -100,6 +101,7 @@ class PlayerData {
   final List<int> riichiTile = []; // リーチ牌
 
   void clearTiles() {
+    openTiles = false;
     drawnTile.clear();
     tiles.clear();
     discardedTiles.clear();
@@ -169,11 +171,29 @@ class TableState {
   static const waitToDiscardForOpenKan = "waitToDiscardForOpenKan";
   static const waitToDiscardForCloseKan = "waitToDiscardForCloseKan";
   static const waitToDiscardForLateKan = "waitToDiscardForLateKan";
+  static const waitToDiscardWithRiichi = "waitToDiscardWithRiichi";
 
   static const calledRon = "calledRon";
+
   static const drawGame = "drawGame";
   static const processingFinishHand = "processingFinishHand";
   static const waitingNextHand = "waitingNextHand";
+
+  static bool isSelectingTileState(state) {
+    const isSelectingTileState = [
+      TableState.waitToDiscard,
+      TableState.waitToDiscardForPongOrChow,
+      TableState.waitToDiscardForOpenKan,
+      TableState.waitToDiscardForCloseKan,
+      TableState.waitToDiscardForLateKan,
+      TableState.selectingTilesForPong,
+      TableState.selectingTilesForChow,
+      TableState.selectingTilesForOpenKan,
+      TableState.selectingTilesForCloseKan,
+      TableState.selectingTilesForLateKan,
+    ];
+    return isSelectingTileState.contains(state);
+  }
 }
 
 class TableData {
@@ -230,6 +250,10 @@ class TableData {
     lastDiscardedTile = map["lastDiscardedTile"] as int;
     lastDiscardedPlayerPeerID = map["lastDiscardedPlayerPeerID"] as String;
     countOfKan = map["countOfKan"] as int;
+  }
+
+  bool isSelectingTileState() {
+    return TableState.isSelectingTileState(state);
   }
 
   List<String> idList() {
@@ -400,14 +424,33 @@ class Table extends TableData {
     _updateTableListener();
   }
 
+  handleDiscardTileWithRiichi({required String peerId, required int tile}) {
+    _checkState(peerId, allowTableState: [
+      TableState.waitToDiscard,
+      TableState.waitToDiscardForCloseKan
+    ]);
+
+    final data = playerData(peerId)!;
+    data.riichiTile.add(tile);
+    handleDiscardTile(peerId: peerId, tile: tile);
+  }
+
   handleRon({required String peerId}) {
+    _checkState(peerId,
+        needMyTrue: false, allowTableState: [TableState.drawable]);
     state = TableState.calledRon;
     _turnTo(turnedPeerId);
     _updateTableListener();
   }
 
   handleFinishHand({required String peerId}) {
-    _checkState(peerId, allowTableState: [TableState.calledRon]);
+    _checkState(peerId, allowTableState: [
+      TableState.calledRon,
+      TableState.waitToDiscard,
+      TableState.waitToDiscardForOpenKan,
+      TableState.waitToDiscardForCloseKan,
+      TableState.waitToDiscardForLateKan
+    ]);
     _onFinishedHand();
   }
 
@@ -526,10 +569,8 @@ class Table extends TableData {
     lastDiscardedPlayerPeerID = turnedPeerId;
 
     // 明槓の場合は 打牌後にドラをめくる。
-    if ([
-      TableState.waitToDiscardForOpenKan,
-      TableState.waitToDiscardForLateKan
-    ].contains(state)) {
+    if ([TableState.waitToDiscardForOpenKan, TableState.waitToDiscardForLateKan]
+        .contains(state)) {
       countOfKan += 1;
     }
 

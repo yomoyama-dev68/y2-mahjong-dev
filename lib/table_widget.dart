@@ -6,6 +6,7 @@ import 'name_set_dialog.dart';
 import 'table_controller.dart' as tbl;
 import 'tiles_painter.dart';
 import 'table_ribbon_widget.dart';
+import 'mywall_widget.dart';
 
 class GameTableWidget extends StatefulWidget {
   const GameTableWidget({Key? key, required this.roomId, this.playerName})
@@ -92,7 +93,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         painter: TablePainter(_game.myPeerId, _game.table, _imageMap),
       ),
     ));
-    if (_game.isTradingScore) {
+
+    if (_game.handLocalState.onTradingScore) {
       stacks.add(SizedBox(width: 350, child: buildTradingScoreWidget()));
     }
     final myData = _game.table.playerDataMap[_game.myPeerId];
@@ -101,18 +103,22 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           width: 350,
           child: buildAcceptTradingScoreWidget(myData.requestingScoreFrom)));
     }
+    final widgets = [
+      Stack(
+        children: stacks,
+        alignment: Alignment.center,
+      ),
+      SizedBox(
+        width: 700,
+        child: TableRibbonWidget(gameData: _game),
+      ),
+    ];
+    if (_game.table.isSelectingTileState()) {
+      widgets.add(SizedBox(width: 700 , child: MyWallWidget(gameData: _game)));
+    }
 
     return Column(
-      children: [
-        Stack(
-          children: stacks,
-          alignment: Alignment.center,
-        ),
-        SizedBox(
-          width: 700,
-          child: TableRibbonWidget(gameData: _game),
-        ),
-      ],
+      children: widgets,
     );
   }
 
@@ -148,14 +154,18 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       Spacer(),
       ElevatedButton(
         child: const Text("No"),
-        onPressed: () {_game.refuseRequestedScore();},
+        onPressed: () {
+          _game.refuseRequestedScore();
+        },
       ),
       const SizedBox(
         width: 5,
       ),
       ElevatedButton(
         child: const Text("OK"),
-        onPressed: () {_game.acceptRequestedScore();},
+        onPressed: () {
+          _game.acceptRequestedScore();
+        },
       )
     ]));
     return Container(
@@ -239,12 +249,6 @@ class TablePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     _tilesPainter.paint(canvas, size);
-
-    final paint = Paint();
-    canvas.drawLine(
-        Offset(size.width / 2, 0), Offset(size.width / 2, size.height), paint);
-    canvas.drawLine(
-        Offset(0, size.height / 2), Offset(size.width, size.height / 2), paint);
   }
 
   @override
