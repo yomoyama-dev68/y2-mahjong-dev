@@ -115,16 +115,16 @@ class MyWallWidgetState extends State<MyWallWidget> {
   String _tileToImageFileUrl(int tile) {
     final info = tbl.TileInfo(tile);
     if (info.type == 0) {
-      return "images/manzu_all/p_ms${info.number + 1}_0.gif";
+      return "assets/images/manzu_all/p_ms${info.number + 1}_0.gif";
     }
     if (info.type == 1) {
-      return "images/pinzu_all/p_ps${info.number + 1}_0.gif";
+      return "assets/images/pinzu_all/p_ps${info.number + 1}_0.gif";
     }
     if (info.type == 2) {
-      return "images/sozu_all/p_ss${info.number + 1}_0.gif";
+      return "assets/images/sozu_all/p_ss${info.number + 1}_0.gif";
     }
     if (info.type == 3) {
-      return "images/tupai_all/p_ji${info.number + 1}_0.gif";
+      return "assets/images/tupai_all/p_ji${info.number + 1}_0.gif";
     }
     return "";
   }

@@ -202,7 +202,7 @@ class TableData {
   int leaderChangeCount = -1; // 局数: 0~3:東場, 4~7:南場,
   int leaderContinuousCount = 0; // 場数（親継続数）
   String lastWinner = "";
-  int _riichiScores = 0; // リーチ供託棒
+  int remainRiichiBarCounts = 0; // リーチ供託棒数
 
   // 局中関連
   String state = TableState.notSetup;
@@ -400,6 +400,15 @@ class Table extends TableData {
     state = TableState.drawGame;
     _updateTableListener();
     await Future.delayed(const Duration(seconds: 1));
+
+    //　リーチ棒の精算
+    for (final data in playerDataMap.values) {
+      if (data.riichiTile.isNotEmpty) {
+        remainRiichiBarCounts += 1;
+        data.score -= 1000;
+      }
+    }
+
     _onFinishedHand();
   }
 
@@ -456,12 +465,12 @@ class Table extends TableData {
     //　リーチ棒の精算
     for (final data in playerDataMap.values) {
       if (data.riichiTile.isNotEmpty) {
-        _riichiScores += 1000;
+        remainRiichiBarCounts += 1;
         data.score -= 1000;
       }
     }
-    playerData(turnedPeerId)!.score += _riichiScores;
-    _riichiScores = 0;
+    playerData(turnedPeerId)!.score += remainRiichiBarCounts * 1000;
+    remainRiichiBarCounts = 0;
 
     _onFinishedHand();
   }

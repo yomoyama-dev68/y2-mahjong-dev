@@ -57,16 +57,17 @@ class TradingScoreAcceptWidget extends StatelessWidget {
       )
     ]));
     return Container(
+      decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.all(Radius.circular(5))),
       padding: const EdgeInsets.all(5),
       child: Column(children: widgets),
-      color: Colors.white,
     );
   }
 }
 
 class TradingScoreRequestWidget extends StatelessWidget {
-  const TradingScoreRequestWidget(
-      {Key? key, required this.gameData})
+  const TradingScoreRequestWidget({Key? key, required this.gameData})
       : super(key: key);
 
   final game.Game gameData;
@@ -112,18 +113,19 @@ class TradingScoreRequestWidget extends StatelessWidget {
       ElevatedButton(
         child: const Text("OK"),
         onPressed: () {
-          final request = textControllerMap
-              .map((key, value) => MapEntry(key, int.tryParse(value.text) ?? 0));
+          final request = textControllerMap.map(
+              (key, value) => MapEntry(key, int.tryParse(value.text) ?? 0));
           request.removeWhere((key, value) => value == 0);
           gameData.requestScore(request);
         },
       )
     ]));
     return Container(
+      decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.all(Radius.circular(5))),
       padding: const EdgeInsets.all(5),
       child: Column(children: widgets),
-      color: Colors.white,
     );
   }
 }
-

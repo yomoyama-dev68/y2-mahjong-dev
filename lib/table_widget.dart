@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:web_app_sample/player_state_tile.dart';
+import 'package:web_app_sample/stage_info_widget.dart';
 import 'package:web_app_sample/trading_score_widget.dart';
 import 'dart:ui' as ui;
 
@@ -100,6 +101,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     for (final widget in buildPlayerStateTiles()) {
       stacks.add(widget);
     }
+    stacks.add(Transform.translate(offset: Offset(0, 40), child: StageInfoWidget(table: _game.table)));
 
     if (_game.handLocalState.onTradingScore) {
       stacks.add(SizedBox(
@@ -173,7 +175,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           offset: offsets[direction],
           child: Transform.rotate(
               angle: angles[direction],
-              child: PlayerStateTile(winds[leaderIndex], data.name, data.score))));
+              child:
+                  PlayerStateTile(winds[leaderIndex], data.name, data.score, data.riichiTile.isNotEmpty))));
     }
 
     return widgets;

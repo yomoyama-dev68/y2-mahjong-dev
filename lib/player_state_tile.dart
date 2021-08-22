@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class PlayerStateTile extends StatelessWidget {
-  PlayerStateTile(this.wind, this.name, this.score); // コンストラクタで引数を受け取る
+  PlayerStateTile(this.wind, this.name, this.score, this.riichi); // コンストラクタで引数を受け取る
 
   static const windTextStyle = TextStyle(
     color: Colors.white,
@@ -15,6 +15,12 @@ class PlayerStateTile extends StatelessWidget {
   final String wind;
   final String name;
   final int score;
+  final bool riichi;
+
+  int _score() {
+    if (riichi) return score - 1000;
+    return  score;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +51,7 @@ class PlayerStateTile extends StatelessWidget {
                                 textAlign: TextAlign.right,
                                 overflow: TextOverflow.ellipsis),
                             Text(
-                              '$score',
+                              '${_score()}',
                               style: contentTextStyle,
                               textAlign: TextAlign.right,
                             )
