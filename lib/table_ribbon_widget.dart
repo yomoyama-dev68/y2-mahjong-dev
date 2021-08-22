@@ -115,7 +115,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   }
 
   Widget _buildButtonForCallCmd(String text, Function? func) {
-    return FloatingActionButton(
+    return ElevatedButton(
         child: Text(text),
         onPressed: canCmd() && (func != null) ? () => func() : null);
   }
@@ -126,6 +126,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       _buildButtonForCallCmd("ポン", g().pong),
       _buildButtonForCallCmd("チー", g().chow),
       _buildButtonForCallCmd("カン", g().openKan),
+      _buildPopupMenu(),
     ];
   }
 
@@ -183,5 +184,26 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       _buildButtonForCallCmd("点棒支払", g().startTradingScore),
       _buildButtonForCallCmd("次局へ", g().requestNextHand),
     ];
+  }
+
+  void _onSelectedPopupMenu(String menu) {
+    if (menu == "openMyWall") g().openMyWall();
+    if (menu == "startTradingScore") g().startTradingScore();
+  }
+
+  Widget _buildPopupMenu() {
+    return PopupMenuButton<String>(
+      onSelected: _onSelectedPopupMenu,
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: "openMyWall",
+          child: Text("牌オープン"),
+        ),
+        const PopupMenuItem<String>(
+          value: "startTradingScore",
+          child: Text('点棒支払'),
+        ),
+      ],
+    );
   }
 }

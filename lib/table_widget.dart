@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:web_app_sample/player_state_tile.dart';
+import 'package:web_app_sample/trading_score_widget.dart';
 import 'dart:ui' as ui;
 
 import 'game_controller.dart' as game;
@@ -7,6 +9,7 @@ import 'table_controller.dart' as tbl;
 import 'tiles_painter.dart';
 import 'table_ribbon_widget.dart';
 import 'mywall_widget.dart';
+import 'dart:math';
 
 class GameTableWidget extends StatefulWidget {
   const GameTableWidget({Key? key, required this.roomId, this.playerName})
@@ -35,7 +38,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   void onChangeTableState() {
     setState(() {});
-    print("onChangeTableState ${_game.myName()} ${_game.state}");
+    // print("onChangeTableState ${_game.myName()} ${_game.state}");
     if (_lastState != _game.state) {
       _lastState = _game.state;
       if (_game.state == game.State.onSettingMyName) {
@@ -94,15 +97,23 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       ),
     ));
 
+    for (final widget in buildPlayerStateTiles()) {
+      stacks.add(widget);
+    }
+
     if (_game.handLocalState.onTradingScore) {
-      stacks.add(SizedBox(width: 350, child: buildTradingScoreWidget()));
+      stacks.add(SizedBox(
+          width: 350, child: TradingScoreRequestWidget(gameData: _game)));
     }
     final myData = _game.table.playerDataMap[_game.myPeerId];
     if (myData != null && myData.requestingScoreFrom.isNotEmpty) {
       stacks.add(SizedBox(
           width: 350,
-          child: buildAcceptTradingScoreWidget(myData.requestingScoreFrom)));
+          child: TradingScoreAcceptWidget(
+              gameData: _game,
+              requestingScoreFrom: myData.requestingScoreFrom)));
     }
+
     final widgets = [
       Stack(
         children: stacks,
@@ -114,7 +125,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       ),
     ];
     if (_game.table.isSelectingTileState()) {
-      widgets.add(SizedBox(width: 700 , child: MyWallWidget(gameData: _game)));
+      widgets.add(SizedBox(width: 700, child: MyWallWidget(gameData: _game)));
     }
 
     return Column(
@@ -122,117 +133,50 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     );
   }
 
-  Widget buildAcceptTradingScoreWidget(Map<String, int> requestingScoreFrom) {
-    final widgets = <Widget>[
-      const Text("点棒支払を受け入れますか？"),
-      const SizedBox(
-        height: 10,
-      )
-    ];
-
-    final textControllerMap = <String, TextEditingController>{};
-
-    for (final e in _game.member.entries) {
-      if (_game.myPeerId == e.key) continue;
-      if (!requestingScoreFrom.containsKey(e.key)) continue;
-      final score = requestingScoreFrom[e.key].toString();
-      final textController = TextEditingController();
-      textControllerMap[e.key] = textController;
-      textController.text = score;
-      widgets.add(TextField(
-        controller: textController,
-        readOnly: true,
-        decoration: InputDecoration(
-            labelText: "${e.value}から", border: OutlineInputBorder()),
-      ));
-      widgets.add(const SizedBox(
-        height: 10,
-      ));
-    }
-
-    widgets.add(Row(children: [
-      Spacer(),
-      ElevatedButton(
-        child: const Text("No"),
-        onPressed: () {
-          _game.refuseRequestedScore();
-        },
-      ),
-      const SizedBox(
-        width: 5,
-      ),
-      ElevatedButton(
-        child: const Text("OK"),
-        onPressed: () {
-          _game.acceptRequestedScore();
-        },
-      )
-    ]));
-    return Container(
-      padding: const EdgeInsets.all(5),
-      child: Column(children: widgets),
-      color: Colors.white,
-    );
-  }
-
-  Widget buildTradingScoreWidget() {
-    final widgets = <Widget>[
-      const Text("点棒支払"),
-      const SizedBox(
-        height: 10,
-      )
-    ];
-
-    final textControllerMap = <String, TextEditingController>{};
-
-    for (final e in _game.member.entries) {
-      final textController = TextEditingController();
-      if (_game.myPeerId == e.key) continue;
-      textControllerMap[e.key] = textController;
-      widgets.add(TextField(
-        controller: textController,
-        decoration: InputDecoration(
-            labelText: "${e.value}へ", border: OutlineInputBorder()),
-        autofocus: true,
-        keyboardType: TextInputType.number,
-      ));
-      widgets.add(const SizedBox(
-        height: 10,
-      ));
-    }
-
-    widgets.add(Row(children: [
-      Spacer(),
-      ElevatedButton(
-        child: const Text("Cancel"),
-        onPressed: () {
-          _game.cancelTradingScore();
-        },
-      ),
-      const SizedBox(
-        width: 5,
-      ),
-      ElevatedButton(
-        child: const Text("OK"),
-        onPressed: () {
-          final request = textControllerMap.map(
-              (key, value) => MapEntry(key, int.tryParse(value.text) ?? 0));
-          request.removeWhere((key, value) => value == 0);
-          _game.requestScore(request);
-        },
-      )
-    ]));
-    return Container(
-      padding: const EdgeInsets.all(5),
-      child: Column(children: widgets),
-      color: Colors.white,
-    );
-  }
-
   void onTileImageLoaded(Map<String, ui.Image> imageMap) {
     setState(() {
       _imageMap.addAll(imageMap);
     });
+  }
+
+  List<Widget> buildPlayerStateTiles() {
+    final playerOrder = _game.table.playerDataMap.keys.toList();
+    final baseIndex = playerOrder.indexOf(_game.myPeerId);
+    final leaderBaseIndex = _game.table.leaderChangeCount % 4;
+
+    final winds = [
+      "東",
+      "南",
+      "西",
+      "北",
+    ];
+    final offsets = [
+      const Offset(0, 260),
+      const Offset(280, 0),
+      const Offset(0, -280),
+      const Offset(-280, 0),
+    ];
+    final angles = [
+      0.0,
+      -pi / 2,
+      pi,
+      pi / 2,
+    ];
+
+    final widgets = <Widget>[];
+    for (int direction = 0; direction < 4; direction++) {
+      final index = (direction + baseIndex) % 4;
+      final leaderIndex = (4 + (index - leaderBaseIndex)) % 4;
+      final data = _game.table.playerDataMap[playerOrder[index]]!;
+
+      widgets.add(Transform.translate(
+          offset: offsets[direction],
+          child: Transform.rotate(
+              angle: angles[direction],
+              child: PlayerStateTile(winds[leaderIndex], data.name, data.score))));
+    }
+
+    return widgets;
   }
 }
 

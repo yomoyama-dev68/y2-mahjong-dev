@@ -10,10 +10,50 @@ class TileImages {
     _loadTiles("sozu_all/p_ss", 2, 9);
     _loadTiles("tupai_all/p_ji", 3, 7);
     _loadTiles("ms_all/p_bk", 4, 1);
+    _loadRiichiBar();
+    _loadStageTiles();
   }
 
   final Function(Map<String, ui.Image>) _onLoaded;
   final Map<String, ui.Image> imageMap = {};
+
+  void _loadRiichiBar() {
+    _loadImage('riichibar_0', 'assets/images/ms_all/b_1_2.gif');
+    _loadImage('riichibar_1', 'assets/images/ms_all/b_1_1.gif');
+    _loadImage('riichibar_2', 'assets/images/ms_all/b_1_2.gif');
+    _loadImage('riichibar_3', 'assets/images/ms_all/b_1_1.gif');
+  }
+
+  void _loadStageTiles() {
+    _loadImage('stage_0_0', 'assets/images/ms_all/c_e_1.gif');
+    _loadImage('stage_0_1', 'assets/images/ms_all/c_e_4.gif');
+    _loadImage('stage_0_2', 'assets/images/ms_all/c_e_3.gif');
+    _loadImage('stage_0_3', 'assets/images/ms_all/c_e_2.gif');
+
+    _loadImage('stage_1_0', 'assets/images/ms_all/c_s_1.gif');
+    _loadImage('stage_1_1', 'assets/images/ms_all/c_s_4.gif');
+    _loadImage('stage_1_2', 'assets/images/ms_all/c_s_3.gif');
+    _loadImage('stage_1_3', 'assets/images/ms_all/c_s_2.gif');
+
+    _loadImage('stage_2_0', 'assets/images/ms_all/c_w_1.gif');
+    _loadImage('stage_2_1', 'assets/images/ms_all/c_w_4.gif');
+    _loadImage('stage_2_2', 'assets/images/ms_all/c_w_3.gif');
+    _loadImage('stage_2_3', 'assets/images/ms_all/c_w_2.gif');
+
+    _loadImage('stage_3_0', 'assets/images/ms_all/c_n_1.gif');
+    _loadImage('stage_3_1', 'assets/images/ms_all/c_n_4.gif');
+    _loadImage('stage_3_2', 'assets/images/ms_all/c_n_3.gif');
+    _loadImage('stage_3_3', 'assets/images/ms_all/c_n_2.gif');
+  }
+
+  void _loadImage(String key, String url) {
+    // print(url);
+    rootBundle.load(url).then((data) {
+      ui.decodeImageFromList(data.buffer.asUint8List(), (ui.Image img) {
+        _onLoadedImage(key, img);
+      });
+    });
+  }
 
   void _loadTiles(String prefix, int tileType, int tileNumberMax) {
     // Tile number.
@@ -43,11 +83,11 @@ class TileImages {
 
   void _onLoadedImage(String key, ui.Image img) {
     imageMap[key] = img;
-    const quantity = 9 * 5 * 3 + 7 * 5 + 1 * 5;
+    const quantity = 9 * 5 * 3 + 7 * 5 + 1 * 5 + 4 + 4 * 4;
     //print("loading: [${imageMap.length}/${quantity}]");
     if (imageMap.length == quantity) {
       // 全部ロード完了
-      //print("completed loading images.");
+      print("completed loading images.");
       _onLoaded(imageMap);
     }
   }
@@ -73,7 +113,6 @@ class TilesPainter {
 
     final keyList = _tableData.playerDataMap.keys.toList();
     final baseDirection = keyList.indexOf(myPeerId);
-
     for (var direction = 0; direction < 4; direction++) {
       final index = (baseDirection + direction) % 4;
       final data = _tableData.playerDataMap[keyList[index]]!;
@@ -162,8 +201,11 @@ class TilesPainter {
     }
 
     drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
-    final paint = Paint();
+    final normalPaint = Paint();
+    final calledTilePaint = Paint();
+    calledTilePaint.color = const Color.fromRGBO(0, 0, 0, 0.6);
     for (final item in drawObjects) {
+      final paint = item.isCalled ? calledTilePaint : normalPaint;
       canvas.drawImage(item.image, item.pos, paint);
     }
   }
@@ -351,7 +393,6 @@ class TilesPainter {
     tbl.CalledTiles tiles,
     int direction,
   ) {
-
     final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
     if (tiles.callAs == "close-kan") {
       tileDirectionMap.add([direction, -1, 0]);
@@ -366,7 +407,6 @@ class TilesPainter {
     // print("peerId: ${peerId}, calledFrom: ${tiles.calledFrom}, callDirection: ${callDirection}, direction: ${direction}, callAs: ${tiles.callAs}");
     assert(callDirection != 0);
     final calledTileDirection = (direction + 1) % 4;
-
 
     if (tiles.callAs == "pong-chow") {
       tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
@@ -509,6 +549,71 @@ class TilesPainter {
     return image;
   }
 
+  void drawRiichiBars(Canvas canvas, Size size) {
+    final drawObjects = <DrawObject>[];
+
+    final keyList = _tableData.playerDataMap.keys.toList();
+    final baseDirection = keyList.indexOf(myPeerId);
+    for (var direction = 0; direction < 4; direction++) {
+      final index = (baseDirection + direction) % 4;
+      final data = _tableData.playerDataMap[keyList[index]]!;
+      if (data.riichiTile.isNotEmpty) {
+        final drawPos = size.center(riichiBarDrawPos(direction, 33.0 * 2.7));
+        final image = _imageMap["riichibar_${direction}"]!;
+        drawObjects.add(DrawObject(image, drawPos, false));
+      }
+    }
+
+    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
+    final paint = Paint();
+    for (final item in drawObjects) {
+      canvas.drawImage(item.image, item.pos, paint);
+    }
+  }
+
+  Offset riichiBarDrawPos(int direction, double centerSize) {
+    final image = _imageMap["riichibar_${direction}"]!;
+    final hW = image.width / 2;
+    final hH = image.height / 2;
+    late Offset offset;
+    if (direction == 0) offset = Offset(0, centerSize);
+    if (direction == 1) offset = Offset(centerSize, 0);
+    if (direction == 2) offset = Offset(0, -centerSize + hH * 2);
+    if (direction == 3) offset = Offset(-centerSize, 0);
+    return offset.translate(-hW, -hH);
+  }
+
+  void drawStageTile(Canvas canvas, Size size) {
+    final drawObjects = <DrawObject>[];
+
+    final keyList = _tableData.playerDataMap.keys.toList();
+    final stage = _tableData.leaderChangeCount ~/ 4;
+    final baseDirection = keyList.indexOf(myPeerId);
+    final firstLeaderDirection = (4 - baseDirection) % 4;
+
+    final image = _imageMap["stage_${stage}_${firstLeaderDirection}"]!;
+    final drawPos = stageTileDrawPos(stage, firstLeaderDirection, size);
+
+    drawObjects.add(DrawObject(image, drawPos, false));
+    drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
+    final paint = Paint();
+    for (final item in drawObjects) {
+      canvas.drawImage(item.image, item.pos, paint);
+    }
+  }
+
+  Offset stageTileDrawPos(int stage, int direction, Size size) {
+    final image = _imageMap["stage_${stage}_${direction}"]!;
+    final hW = image.width / 2;
+    final hH = image.height / 2;
+    late Offset offset;
+    if (direction == 0) offset = Offset(size.width - 100, size.height - 100);
+    if (direction == 1) offset = Offset(size.width - 100, 100);
+    if (direction == 2) offset = Offset(100, 100);
+    if (direction == 3) offset = Offset(100, size.height - 100);
+    return offset.translate(-hW, -hH);
+  }
+
   void paint(Canvas canvas, Size size) {
     // print("paint: ${myPeerId}: ${_tableData.toMap()}");
     final myData = _tableData.playerData(myPeerId);
@@ -519,6 +624,8 @@ class TilesPainter {
     drawDeadWall(canvas, size);
     if (myData.openTiles == false) drawMyWall(canvas, size, myData);
     drawOpenedTiles(canvas, size);
+    drawRiichiBars(canvas, size);
+    drawStageTile(canvas, size);
 
     /*
     final paint = Paint();
