@@ -25,7 +25,7 @@ class PlayerStateTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Opacity(
-        opacity: 0.8,
+        opacity: 0.6,
         child: Container(
             decoration: const BoxDecoration(
                 color: Colors.black,

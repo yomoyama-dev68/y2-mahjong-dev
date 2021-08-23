@@ -61,7 +61,7 @@ class TradingScoreAcceptWidget extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.all(Radius.circular(5))),
       padding: const EdgeInsets.all(5),
-      child: Column(children: widgets),
+      child: Column(mainAxisSize: MainAxisSize.min,children: widgets),
     );
   }
 }

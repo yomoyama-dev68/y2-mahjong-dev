@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'table_controller.dart' as tbl;
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 
 class TileImages {
   TileImages(this._onLoaded) {
@@ -619,12 +620,17 @@ class TilesPainter {
     final myData = _tableData.playerData(myPeerId);
     if (myData == null) return;
 
-    drawDiscardTiles(canvas, size);
-    drawCalledTiles(canvas, size);
-    drawDeadWall(canvas, size);
-    if (myData.openTiles == false) drawMyWall(canvas, size, myData);
-    drawOpenedTiles(canvas, size);
-    drawRiichiBars(canvas, size);
-    drawStageTile(canvas, size);
+    canvas.save();
+    const baseTableSize = Size(700, 700); //[px]
+    final realTableSize = math.min(size.width, size.height);
+    canvas.scale(realTableSize / baseTableSize.width);
+    drawDiscardTiles(canvas, baseTableSize);
+    drawCalledTiles(canvas, baseTableSize);
+    drawDeadWall(canvas, baseTableSize);
+    if (myData.openTiles == false) drawMyWall(canvas, baseTableSize, myData);
+    drawOpenedTiles(canvas, baseTableSize);
+    drawRiichiBars(canvas, baseTableSize);
+    drawStageTile(canvas, baseTableSize);
+    canvas.restore();
   }
 }

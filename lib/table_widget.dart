@@ -27,6 +27,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   final Map<String, ui.Image> _imageMap = {};
   late game.Game _game;
   late game.State _lastState;
+  bool showStageAndPlayerInfo = true;
 
   @override
   void initState() {
@@ -88,47 +89,60 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   }
 
   Widget buildBody() {
-    final stacks = <Widget>[];
-    stacks.add(Container(
-      color: Colors.teal,
-      width: 700,
-      height: 700,
-      child: CustomPaint(
-        painter: TablePainter(_game.myPeerId, _game.table, _imageMap),
-      ),
-    ));
+    const scalse = 1.0;
+    const tableSize = 700.0 * scalse;
+    const inputFormSize = tableSize > 360.0 ? 350.0 : (tableSize - 10);
 
-    for (final widget in buildPlayerStateTiles()) {
-      stacks.add(widget);
+    final stacks = <Widget>[];
+
+    stacks.add(GestureDetector(
+        onTap: () {
+          setState(() {
+            showStageAndPlayerInfo = !showStageAndPlayerInfo;
+          });
+        },
+        child: Container(
+          color: Colors.teal,
+          width: tableSize,
+          height: tableSize,
+          child: CustomPaint(
+            painter: TablePainter(_game.myPeerId, _game.table, _imageMap),
+          ),
+        )));
+
+    if (showStageAndPlayerInfo) {
+      for (final widget in buildPlayerStateTiles(tableSize, scalse)) {
+        stacks.add(widget);
+      }
+      stacks.add(Transform.translate(
+          offset: Offset(0, 40), child: StageInfoWidget(table: _game.table)));
     }
-    stacks.add(Transform.translate(offset: Offset(0, 40), child: StageInfoWidget(table: _game.table)));
 
     if (_game.handLocalState.onTradingScore) {
       stacks.add(SizedBox(
-          width: 350, child: TradingScoreRequestWidget(gameData: _game)));
+          width: inputFormSize,
+          child: TradingScoreRequestWidget(gameData: _game)));
     }
     final myData = _game.table.playerDataMap[_game.myPeerId];
     if (myData != null && myData.requestingScoreFrom.isNotEmpty) {
       stacks.add(SizedBox(
-          width: 350,
+          width: inputFormSize,
           child: TradingScoreAcceptWidget(
               gameData: _game,
               requestingScoreFrom: myData.requestingScoreFrom)));
     }
 
-    final widgets = [
-      Stack(
-        children: stacks,
-        alignment: Alignment.center,
-      ),
-      SizedBox(
-        width: 700,
-        child: TableRibbonWidget(gameData: _game),
-      ),
-    ];
-    if (_game.table.isSelectingTileState()) {
-      widgets.add(SizedBox(width: 700, child: MyWallWidget(gameData: _game)));
-    }
+    final widgets = <Widget>[];
+    widgets.add(Stack(
+      children: stacks,
+      alignment: Alignment.center,
+    ));
+    widgets
+        .add(SizedBox(width: tableSize, child: MyWallWidget(gameData: _game)));
+    widgets.add(SizedBox(
+      width: tableSize,
+      child: TableRibbonWidget(gameData: _game),
+    ));
 
     return Column(
       children: widgets,
@@ -141,7 +155,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     });
   }
 
-  List<Widget> buildPlayerStateTiles() {
+  List<Widget> buildPlayerStateTiles(double tableSize, double scale) {
     final playerOrder = _game.table.playerDataMap.keys.toList();
     final baseIndex = playerOrder.indexOf(_game.myPeerId);
     final leaderBaseIndex = _game.table.leaderChangeCount % 4;
@@ -152,11 +166,13 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       "西",
       "北",
     ];
+    final baseOffset = tableSize / 2 - scale * 35 - 30;
+    final subOffset = scale * 20;
     final offsets = [
-      const Offset(0, 260),
-      const Offset(280, 0),
-      const Offset(0, -280),
-      const Offset(-280, 0),
+      Offset(0, baseOffset - subOffset),
+      Offset(baseOffset, 0),
+      Offset(0, -baseOffset),
+      Offset(-baseOffset, 0),
     ];
     final angles = [
       0.0,
@@ -175,8 +191,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           offset: offsets[direction],
           child: Transform.rotate(
               angle: angles[direction],
-              child:
-                  PlayerStateTile(winds[leaderIndex], data.name, data.score, data.riichiTile.isNotEmpty))));
+              child: PlayerStateTile(winds[leaderIndex], data.name, data.score,
+                  data.riichiTile.isNotEmpty))));
     }
 
     return widgets;

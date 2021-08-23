@@ -49,7 +49,7 @@ class StageInfoWidget extends StatelessWidget {
     }
 
     return Opacity(
-        opacity: 0.7,
+        opacity: 0.6,
         child: SizedBox(
             width: 150,
             child: Container(
