@@ -15,8 +15,9 @@ class TileImages {
     _loadStageTiles();
   }
 
-  final Function(Map<String, ui.Image>) _onLoaded;
-  final Map<String, ui.Image> imageMap = {};
+  final Function(Map<String, ui.Image>, Map<String, Image>) _onLoaded;
+  final Map<String, ui.Image> uiImageMap = {};
+  final Map<String, Image> imageMap = {};
 
   void _loadRiichiBar() {
     _loadImage('riichibar_0', 'assets/images/ms_all/b_1_2.gif');
@@ -50,8 +51,9 @@ class TileImages {
   void _loadImage(String key, String url) {
     // print(url);
     rootBundle.load(url).then((data) {
-      ui.decodeImageFromList(data.buffer.asUint8List(), (ui.Image img) {
-        _onLoadedImage(key, img);
+      final img = Image.memory(data.buffer.asUint8List(), scale: 0.8);
+      ui.decodeImageFromList(data.buffer.asUint8List(), (ui.Image uiImg) {
+        _onLoadedImage(key, uiImg, img);
       });
     });
   }
@@ -72,24 +74,20 @@ class TileImages {
 
         final key = '${tileType}_${i}_${converted}';
         final url = 'assets/images/${prefix}${i + 1}_${direction}.gif';
-        // print(url);
-        rootBundle.load(url).then((data) {
-          ui.decodeImageFromList(data.buffer.asUint8List(), (ui.Image img) {
-            _onLoadedImage(key, img);
-          });
-        });
+        _loadImage(key, url);
       }
     }
   }
 
-  void _onLoadedImage(String key, ui.Image img) {
+  void _onLoadedImage(String key, ui.Image uiImg, Image img) {
+    uiImageMap[key] = uiImg;
     imageMap[key] = img;
     const quantity = 9 * 5 * 3 + 7 * 5 + 1 * 5 + 4 + 4 * 4;
     //print("loading: [${imageMap.length}/${quantity}]");
-    if (imageMap.length == quantity) {
+    if (uiImageMap.length == quantity) {
       // 全部ロード完了
       print("completed loading images.");
-      _onLoaded(imageMap);
+      _onLoaded(uiImageMap, imageMap);
     }
   }
 }
@@ -343,7 +341,7 @@ class TilesPainter {
     for (var index = 0; index < data.calledTiles.length; index++) {
       final tiles = data.calledTiles[index];
       baseOffset = drawCalledTilesPerDirection2(
-          drawObjects, peerId, tiles, direction, baseOffset);
+          drawObjects, peerId, tiles, direction, baseOffset, _tableData);
       baseOffset = baseOffset + stepForCall(direction);
     }
   }
@@ -389,10 +387,12 @@ class TilesPainter {
     return 0;
   }
 
+  static
   List<List<int>> createCalledTileDirectionMap(
     String peerId,
     tbl.CalledTiles tiles,
     int direction,
+    tbl.TableData tableData
   ) {
     final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
     if (tiles.callAs == "close-kan") {
@@ -404,7 +404,7 @@ class TilesPainter {
     }
 
     //final peerId = _tableData.playerDataMap.keys.toList()[direction];
-    final callDirection = _tableData.direction(peerId, tiles.calledFrom);
+    final callDirection = tableData.direction(peerId, tiles.calledFrom);
     // print("peerId: ${peerId}, calledFrom: ${tiles.calledFrom}, callDirection: ${callDirection}, direction: ${direction}, callAs: ${tiles.callAs}");
     assert(callDirection != 0);
     final calledTileDirection = (direction + 1) % 4;
@@ -441,9 +441,10 @@ class TilesPainter {
   }
 
   Offset drawCalledTilesPerDirection2(List<DrawObject> drawObjects,
-      String peerId, tbl.CalledTiles tiles, int direction, Offset baseOffset) {
+      String peerId, tbl.CalledTiles tiles, int direction, Offset baseOffset,
+      tbl.TableData tableData) {
     final tileDirectionMap =
-        createCalledTileDirectionMap(peerId, tiles, direction);
+        createCalledTileDirectionMap(peerId, tiles, direction, tableData);
     var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
     var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
 

@@ -29,6 +29,11 @@ class TileInfo {
 
   late int type; // 0:萬子, 1:筒子, 2,:索子, 3:字牌, 4:伏牌
   late int number; // [萬子, 筒子, 索子]: 9種, [字牌]: 7種, [伏牌] 1種
+
+  @override
+  String toString() {
+    return "${type}-${number}";
+  }
 }
 
 class CalledTiles {
@@ -52,15 +57,6 @@ class CalledTiles {
     map["selectedTiles"] = selectedTiles;
     map["callAs"] = callAs;
     return map;
-  }
-
-  bool canLateKanWith(int tile) {
-    final openTiles = [...selectedTiles, calledTile];
-    final number = TileInfo(tile).number;
-    for (final openTile in openTiles) {
-      if (number != TileInfo(openTile).number) return false;
-    }
-    return true;
   }
 }
 
@@ -157,43 +153,12 @@ class TableState {
 
   static const drawable = "drawable";
   static const waitToDiscard = "waitToDiscard";
-
-  static const selectingTilesForPong = "selectingTilesForPong";
-  static const selectingTilesForChow = "selectTilesForChow";
+  static const waitToDiscardForOpenOrLateKan = "waitToDiscardForOpenOrLateKan";
   static const waitToDiscardForPongOrChow = "waitToDiscardForPongOrChow";
-
-  static const selectingCloseOrLateKan = "selectingCloseOrLateKan";
-
-  static const selectingTilesForOpenKan = "selectingTilesForOpenKan";
-  static const selectingTilesForCloseKan = "selectingTilesForCloseKan";
-  static const selectingTilesForLateKan = "selectingTilesForLateKan";
-
-  static const waitToDiscardForOpenKan = "waitToDiscardForOpenKan";
-  static const waitToDiscardForCloseKan = "waitToDiscardForCloseKan";
-  static const waitToDiscardForLateKan = "waitToDiscardForLateKan";
-  static const waitToDiscardWithRiichi = "waitToDiscardWithRiichi";
-
-  static const calledRon = "calledRon";
+  static const called = "called";
 
   static const drawGame = "drawGame";
   static const processingFinishHand = "processingFinishHand";
-  static const waitingNextHand = "waitingNextHand";
-
-  static bool isSelectingTileState(state) {
-    const isSelectingTileState = [
-      TableState.waitToDiscard,
-      TableState.waitToDiscardForPongOrChow,
-      TableState.waitToDiscardForOpenKan,
-      TableState.waitToDiscardForCloseKan,
-      TableState.waitToDiscardForLateKan,
-      TableState.selectingTilesForPong,
-      TableState.selectingTilesForChow,
-      TableState.selectingTilesForOpenKan,
-      TableState.selectingTilesForCloseKan,
-      TableState.selectingTilesForLateKan,
-    ];
-    return isSelectingTileState.contains(state);
-  }
 }
 
 class TableData {
@@ -251,10 +216,6 @@ class TableData {
     lastDiscardedTile = map["lastDiscardedTile"] as int;
     lastDiscardedPlayerPeerID = map["lastDiscardedPlayerPeerID"] as String;
     countOfKan = map["countOfKan"] as int;
-  }
-
-  bool isSelectingTileState() {
-    return TableState.isSelectingTileState(state);
   }
 
   List<String> idList() {
@@ -344,6 +305,10 @@ class Table extends TableData {
   Future<void> _setupHand() async {
     state = TableState.doingSetupHand;
 
+    lastDiscardedTile = -1;
+    lastDiscardedPlayerPeerID = "";
+    countOfKan = 0;
+
     for (final v in playerDataMap.values) {
       v.clearTiles();
     }
@@ -418,138 +383,30 @@ class Table extends TableData {
     _updateTableListener();
   }
 
-  handleCancelCall({required String peerId}) {
-    _checkState(peerId, allowTableState: [
-      TableState.calledRon,
-      TableState.selectingTilesForPong,
-      TableState.selectingTilesForChow,
-      TableState.selectingTilesForOpenKan,
-      TableState.selectingCloseOrLateKan,
-      TableState.selectingTilesForCloseKan,
-      TableState.selectingTilesForLateKan,
-    ]);
-
-    _nextTurn(lastDiscardedPlayerPeerID);
-    state = TableState.drawable;
-    _updateTableListener();
-  }
-
-  handleDiscardTileWithRiichi({required String peerId, required int tile}) {
-    _checkState(peerId, allowTableState: [
-      TableState.waitToDiscard,
-      TableState.waitToDiscardForCloseKan
-    ]);
-
-    final data = playerData(peerId)!;
-    data.riichiTile.add(tile);
-    handleDiscardTile(peerId: peerId, tile: tile);
-  }
-
-  handleRon({required String peerId}) {
-    _checkState(peerId,
-        needMyTrue: false, allowTableState: [TableState.drawable]);
-    state = TableState.calledRon;
-    _turnTo(turnedPeerId);
-    _updateTableListener();
-  }
-
-  handleFinishHand({required String peerId}) {
-    _checkState(peerId, allowTableState: [
-      TableState.calledRon,
-      TableState.waitToDiscard,
-      TableState.waitToDiscardForOpenKan,
-      TableState.waitToDiscardForCloseKan,
-      TableState.waitToDiscardForLateKan
-    ]);
-
-    //　リーチ棒の精算
-    for (final data in playerDataMap.values) {
-      if (data.riichiTile.isNotEmpty) {
-        remainRiichiBarCounts += 1;
-        data.score -= 1000;
-      }
-    }
-    playerData(turnedPeerId)!.score += remainRiichiBarCounts * 1000;
-    remainRiichiBarCounts = 0;
-
-    _onFinishedHand();
-  }
-
-  handleRequestScore(
-      {required String peerId, required Map<String, dynamic> request}) {
-    for (final e in request.entries) {
-      final data = playerData(e.key)!;
-      data.requestingScoreFrom[peerId] = e.value; // Score
-    }
-    _updateTableListener();
-  }
-
-  handleAcceptRequestedScore({required String peerId}) {
-    _checkState(peerId, needMyTrue: false);
-
-    final data = playerData(peerId)!;
-    for (final e in data.requestingScoreFrom.entries) {
-      final requester = e.key;
-      final score = e.value;
-
-      final requesterData = playerData(requester)!;
-      requesterData.score -= score;
-      data.score += score;
-    }
-
-    data.requestingScoreFrom.clear();
-    _updateTableListener();
-  }
-
   _checkState(String peerId,
-      {bool needMyTrue = true, List<String> allowTableState = const []}) {
+      {bool needMyTurn = false,
+      bool needNotMyTurn = false,
+      List<String> allowTableState = const []}) {
     final data = playerData(peerId);
     if (data == null) {
       throw StateError("No Player(${peerId}) data.");
     }
-    if (needMyTrue && turnedPeerId != peerId) {
-      throw StateError("Not your${peerId}) turn.");
+    if (needMyTurn && turnedPeerId != peerId) {
+      throw StateError("Not your(${peerId}) turn.");
+    }
+    if (needNotMyTurn && turnedPeerId == peerId) {
+      throw StateError("Already your(${peerId}) turn.");
     }
     if (allowTableState.isNotEmpty && !allowTableState.contains(state)) {
       throw StateError("Not allowed state(${state}).");
     }
   }
 
-  handleRefuseRequestedScore({required String peerId}) {
-    _checkState(peerId, needMyTrue: false);
-    final data = playerData(peerId)!;
-    data.requestingScoreFrom.clear();
-    _updateTableListener();
-  }
-
-  handleRequestNextHand({required String peerId}) {
-    _checkState(peerId, needMyTrue: false);
-
-    final data = playerData(peerId)!;
-    data.waitingNextHand = true;
-    _updateTableListener();
-
-    // 全員が次局待機状態であれば次局を開始する。
-    var waitingPlayerCount = 0;
-    for (final v in playerDataMap.values) {
-      waitingPlayerCount += v.waitingNextHand ? 1 : 0;
-    }
-    if (waitingPlayerCount == 4) {
-      Future.delayed(const Duration(seconds: 1)).then((value) => nextHand());
-    }
-  }
-
-  handleOpenTiles({required String peerId}) {
-    _checkState(peerId, needMyTrue: false);
-    final data = playerData(peerId)!;
-    data.openTiles = !data.openTiles;
-    _updateTableListener();
-  }
-
   handleDrawTile({required String peerId}) {
     if (turnedPeerId != peerId) throw NotYourTurnException();
 
-    _checkState(peerId, allowTableState: [TableState.drawable]);
+    _checkState(peerId,
+        needMyTurn: true, allowTableState: [TableState.drawable]);
 
     final data = playerData(peerId)!;
     if (data.drawnTile.isNotEmpty) {
@@ -567,19 +424,29 @@ class Table extends TableData {
   }
 
   handleDiscardTile({required String peerId, required int tile}) {
-    _checkState(peerId, allowTableState: [
+    _checkState(peerId, needMyTurn: true, allowTableState: [
       TableState.waitToDiscard,
       TableState.waitToDiscardForPongOrChow,
-      TableState.waitToDiscardForOpenKan,
-      TableState.waitToDiscardForCloseKan,
-      TableState.waitToDiscardForLateKan,
+      TableState.waitToDiscardForOpenOrLateKan
     ]);
 
     final data = playerData(peerId)!;
+
+    var expectedDrawnTileQuantity = 0;
+    if ([TableState.waitToDiscard, TableState.waitToDiscardForOpenOrLateKan]
+        .contains(state)) {
+      expectedDrawnTileQuantity = 1;
+    }
+
+    if (data.drawnTile.length != expectedDrawnTileQuantity) {
+      throw StateError("Quantity of drawn tile is unexpected."
+          " (State:${state}, Quantity: ${data.drawnTile.length})");
+    }
     data.tiles.addAll(data.drawnTile);
     data.drawnTile.clear();
     if (!data.tiles.contains(tile)) {
-      throw StateError("Discard tile does not exist.");
+      throw StateError("A discarded tile does not exist in my wall."
+          " (tile: ${TileInfo(tile)})");
     }
 
     data.tiles.remove(tile);
@@ -590,8 +457,7 @@ class Table extends TableData {
     lastDiscardedPlayerPeerID = turnedPeerId;
 
     // 明槓の場合は 打牌後にドラをめくる。
-    if ([TableState.waitToDiscardForOpenKan, TableState.waitToDiscardForLateKan]
-        .contains(state)) {
+    if (state == TableState.waitToDiscardForOpenOrLateKan) {
       countOfKan += 1;
     }
 
@@ -600,139 +466,136 @@ class Table extends TableData {
     _updateTableListener();
   }
 
-  handlePong({required String peerId}) {
-    if (state != TableState.drawable) throw RefuseException("");
-    state = TableState.selectingTilesForPong;
+  handleDiscardTileWithRiichi({required String peerId, required int tile}) {
+    _checkState(peerId,
+        needMyTurn: true, allowTableState: [TableState.waitToDiscard]);
+    final data = playerData(peerId)!;
+    data.riichiTile.add(tile);
+    handleDiscardTile(peerId: peerId, tile: tile);
+  }
+
+  handleCall({required String peerId}) {
+    if (state != TableState.drawable) {
+      throw RefuseException("Not callable state.");
+    }
+    _checkState(peerId, allowTableState: [TableState.drawable]);
     _turnTo(peerId);
+    state = TableState.called;
     _updateTableListener();
   }
 
-  handleChow({required String peerId}) {
-    if (state != TableState.drawable) throw RefuseException("");
-    state = TableState.selectingTilesForChow;
-    _turnTo(peerId);
+  handleCancelCall({required String peerId}) {
+    _checkState(peerId, needMyTurn: true, allowTableState: [TableState.called]);
+    _nextTurn(lastDiscardedPlayerPeerID);
+    state = TableState.drawable;
     _updateTableListener();
   }
 
-  handleSetSelectedTilesForPongOrChow(
-      {required String peerId, required List<dynamic> selectedTiles}) {
-    _checkState(peerId, allowTableState: [
-      TableState.selectingTilesForPong,
-      TableState.selectingTilesForChow
+  handleWin({required String peerId}) {
+    _checkState(peerId, needMyTurn: true, allowTableState: [
+      TableState.waitToDiscard,
+      TableState.waitToDiscardForOpenOrLateKan,
+      TableState.called
     ]);
+
+    //　リーチ棒の精算
+    for (final data in playerDataMap.values) {
+      if (data.riichiTile.isNotEmpty) {
+        remainRiichiBarCounts += 1;
+        data.score -= 1000;
+      }
+    }
+    playerData(turnedPeerId)!.score += remainRiichiBarCounts * 1000;
+    remainRiichiBarCounts = 0;
+
+    _onFinishedHand();
+    _updateTableListener();
+  }
+
+  handlePongOrChow(
+      {required String peerId, required List<dynamic> selectedTiles}) {
+    _checkState(peerId, needMyTurn: true, allowTableState: [TableState.called]);
 
     if (selectedTiles.length != 2) {
       throw ArgumentError("bad selected tiles quantity.");
     }
 
-    _setSelectedTiles(
-        peerId, selectedTiles.map((e) => e as int).toList(), "pong-chow");
+    _setSelectedTiles(peerId, _toListInt(selectedTiles), "pong-chow");
 
     state = TableState.waitToDiscardForPongOrChow;
     _updateTableListener();
   }
 
-  handleOpenKan({required String peerId}) {
-    if (state != TableState.drawable) throw RefuseException("");
-    // if (turnedPeerId == peerId) throw StateError("In your turn.");
-
-    state = TableState.selectingTilesForOpenKan;
-    _turnTo(peerId);
-    _updateTableListener();
-  }
-
-  handleSelfKan({required String peerId}) {
-    _checkState(peerId, allowTableState: [
-      TableState.waitToDiscard,
-    ]);
-
-    state = TableState.selectingCloseOrLateKan;
-    _updateTableListener();
-  }
-
-  handleCloseKan({required String peerId}) {
-    _checkState(peerId, allowTableState: [
-      TableState.selectingCloseOrLateKan,
-    ]);
-    state = TableState.selectingTilesForCloseKan;
-    _updateTableListener();
-  }
-
-  handleLateKan({required String peerId}) {
-    if (turnedPeerId != peerId) throw StateError("Not your turn.");
-    state = TableState.selectingTilesForLateKan;
-    _updateTableListener();
-  }
-
-  handleSetSelectedTilesForOpenKan(
+  handleOpenKan(
       {required String peerId, required List<dynamic> selectedTiles}) {
-    _checkState(peerId, needMyTrue: false, allowTableState: [
-      TableState.selectingTilesForOpenKan,
-    ]);
+    if (countOfKan >= 4) {
+      throw RefuseException("Already kan has been called 4 times.");
+    }
+
+    _checkState(peerId, needMyTurn: true, allowTableState: [TableState.called]);
     if (selectedTiles.length != 3) {
       throw ArgumentError("bad selected tiles quantity.");
     }
 
-    _setSelectedTiles(
-        peerId, selectedTiles.map((e) => e as int).toList(), "open-kan");
+    _setSelectedTiles(peerId, _toListInt(selectedTiles), "open-kan");
 
     final data = playerData(peerId)!;
     data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
 
-    state = TableState.waitToDiscardForOpenKan;
+    state = TableState.waitToDiscardForOpenOrLateKan;
     _updateTableListener();
   }
 
-  handleSetSelectedTilesForCloseKan(
+  handleCloseKan(
       {required String peerId, required List<dynamic> selectedTiles}) {
-    _checkState(peerId, allowTableState: [
-      TableState.selectingTilesForCloseKan,
-    ]);
+    if (countOfKan >= 4) {
+      throw RefuseException("Already kan has been called 4 times.");
+    }
+
+    _checkState(peerId,
+        needMyTurn: true, allowTableState: [TableState.waitToDiscard]);
+
     if (selectedTiles.length != 4) {
       throw ArgumentError("bad selected tiles quantity.");
     }
 
     final data = playerData(peerId)!;
-
     // 鳴き牌登録
-    data.calledTiles.add(CalledTiles(
-        -1, peerId, selectedTiles.map((e) => e as int).toList(), "close-kan"));
+    data.calledTiles
+        .add(CalledTiles(-1, peerId, _toListInt(selectedTiles), "close-kan"));
     // 鳴き牌を持ち牌から除外
     for (final tile in selectedTiles) {
-      data.tiles.remove(tile);
+      data.tiles.remove(tile); // TODO: 除外する牌が存在しているか確認するべき。
     }
 
     data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
     countOfKan += 1;
 
-    state = TableState.waitToDiscardForCloseKan;
+    state = TableState.waitToDiscard;
     _updateTableListener();
   }
 
-  handleSetSelectedTilesForLateKan(
-      {required String peerId, required int tile}) {
-    _checkState(peerId, allowTableState: [
-      TableState.selectingTilesForLateKan,
-    ]);
+  handleLateKan(
+      {required String peerId,
+      required int tile,
+      required int calledTilesIndex}) {
+    if (countOfKan >= 4) {
+      throw RefuseException("Already kan has been called 4 times.");
+    }
+
+    _checkState(peerId,
+        needMyTurn: true, allowTableState: [TableState.waitToDiscard]);
 
     final data = playerData(peerId)!;
 
-    var targetIndex = -1;
-    for (var i = 0; i < data.calledTiles.length; i++) {
-      if (data.calledTiles[i].canLateKanWith(tile)) {
-        targetIndex = i;
-      }
-    }
-    if (targetIndex < 0) throw ArgumentError("Bad selected tile.");
-
     // ポンした刻子を小明槓にして入れ直す。
-    final pongTiles = data.calledTiles[targetIndex];
+    final pongTiles = data.calledTiles[calledTilesIndex];
     final selectedTiles = <int>[...pongTiles.selectedTiles, tile];
     final lateKanTiles = CalledTiles(
         pongTiles.calledTile, pongTiles.calledFrom, selectedTiles, "late-kan");
-    data.calledTiles[targetIndex] = lateKanTiles;
+    data.calledTiles[calledTilesIndex] = lateKanTiles;
     // 鳴き牌を持ち牌から除外
     data.tiles
       ..addAll(data.drawnTile)
@@ -741,7 +604,7 @@ class Table extends TableData {
     data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
 
-    state = TableState.waitToDiscardForLateKan;
+    state = TableState.waitToDiscardForOpenOrLateKan;
     _updateTableListener();
   }
 
@@ -760,5 +623,61 @@ class Table extends TableData {
     // 鳴先に対して鳴かれた牌登録
     final otherData = playerDataMap[lastDiscardedPlayerPeerID]!;
     otherData.calledTilesByOther.add(lastDiscardedTile);
+  }
+
+  handleOpenTiles({required String peerId}) {
+    _checkState(peerId);
+    final data = playerData(peerId)!;
+    data.openTiles = !data.openTiles;
+    _updateTableListener();
+  }
+
+  handleRequestScore(
+      {required String peerId, required Map<String, dynamic> request}) {
+    for (final e in request.entries) {
+      final data = playerData(e.key)!;
+      data.requestingScoreFrom[peerId] = e.value; // Score
+    }
+    _updateTableListener();
+  }
+
+  handleAcceptRequestedScore({required String peerId}) {
+    _checkState(peerId);
+
+    final data = playerData(peerId)!;
+    for (final e in data.requestingScoreFrom.entries) {
+      final requester = e.key;
+      final score = e.value;
+
+      final requesterData = playerData(requester)!;
+      requesterData.score -= score;
+      data.score += score;
+    }
+
+    data.requestingScoreFrom.clear();
+    _updateTableListener();
+  }
+
+  handleRefuseRequestedScore({required String peerId}) {
+    _checkState(peerId);
+    final data = playerData(peerId)!;
+    data.requestingScoreFrom.clear();
+    _updateTableListener();
+  }
+
+  handleRequestNextHand({required String peerId}) {
+    _checkState(peerId);
+    final data = playerData(peerId)!;
+    data.waitingNextHand = true;
+    _updateTableListener();
+
+    // 全員が次局待機状態であれば次局を開始する。
+    var waitingPlayerCount = 0;
+    for (final v in playerDataMap.values) {
+      waitingPlayerCount += v.waitingNextHand ? 1 : 0;
+    }
+    if (waitingPlayerCount == 4) {
+      Future.delayed(const Duration(seconds: 1)).then((value) => nextHand());
+    }
   }
 }

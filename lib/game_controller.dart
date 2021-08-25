@@ -18,16 +18,24 @@ enum State {
 }
 
 class HandLocalState {
-  bool onTradingScore = false;
-  bool onCalledTsumo = false;
   bool onCalledRiichi = false;
-  String lastTurnedPeerId = "";
+  bool onCalledRon = false;
+  bool onCalledTsumo = false;
+  bool onTradingScore = false;
+
+  String onCalledFor = ""; //[pong, chow, open-kan, ]
+  var selectedCalledTilesIndexForLateKan = -1;
   final selectingTiles = <int>[];
 
+  String lastTurnedPeerId = "";
+
   clear() {
-    onTradingScore = false;
-    onCalledTsumo = false;
     onCalledRiichi = false;
+    onCalledRon = false;
+    onCalledTsumo = false;
+    onTradingScore = false;
+    onCalledFor = "";
+    selectedCalledTilesIndexForLateKan = -1;
     selectingTiles.clear();
   }
 }
@@ -83,105 +91,28 @@ class Game {
     return _commandHandler.canCommand();
   }
 
+  bool isMyTurn() {
+    return myPeerId == table.turnedPeerId;
+  }
+
   Map<String, Function> commandMap() {
     return <String, Function>{
-      "drawTile": table.handleDrawTile,
-      "discardTile": table.handleDiscardTile,
-      "discardTileWithRiichi": table.handleDiscardTileWithRiichi,
-      "callRon": table.handleRon,
-      "callPong": table.handlePong,
-      "callChow": table.handleChow,
-      "callOpenKan": table.handleOpenKan,
-      "callSelfKan": table.handleSelfKan,
-      "callCloseKan": table.handleCloseKan,
-      "callLateKan": table.handleLateKan,
-      "cancelCall": table.handleCancelCall,
-      "setSelectedTilesForPongOrChow":
-          table.handleSetSelectedTilesForPongOrChow,
-      "setSelectedTilesForOpenKan": table.handleSetSelectedTilesForOpenKan,
-      "setSelectedTilesForCloseKan": table.handleSetSelectedTilesForCloseKan,
-      "setSelectedTilesForLateKan": table.handleSetSelectedTilesForLateKan,
+      "handleDrawTile": table.handleDrawTile,
+      "handleDiscardTile": table.handleDiscardTile,
+      "handleDiscardTileWithRiichi": table.handleDiscardTileWithRiichi,
+      "handleCall": table.handleCall,
+      "handleCancelCall": table.handleCancelCall,
+      "handleWin": table.handleWin,
+      "handlePongOrChow": table.handlePongOrChow,
+      "handleOpenKan": table.handleOpenKan,
+      "handleCloseKan": table.handleCloseKan,
+      "handleLateKan": table.handleLateKan,
       "openMyWall": table.handleOpenTiles,
       "requestScore": table.handleRequestScore,
       "acceptRequestedScore": table.handleAcceptRequestedScore,
       "refuseRequestedScore": table.handleRefuseRequestedScore,
       "requestNextHand": table.handleRequestNextHand,
-      "finishHand": table.handleFinishHand,
     };
-  }
-
-  Future<void> cancelCall() async {
-    handLocalState.clear();
-    _handleCommandResult(await _handleCmd("cancelCall", myPeerId));
-  }
-
-  Future<void> pong() async {
-    _handleCommandResult(await _handleCmd("callPong", myPeerId));
-  }
-
-  Future<void> chow() async {
-    _handleCommandResult(await _handleCmd("callChow", myPeerId));
-  }
-
-  Future<void> openKan() async {
-    _handleCommandResult(await _handleCmd("callOpenKan", myPeerId));
-  }
-
-  Future<void> selfKan() async {
-    _handleCommandResult(await _handleCmd("callSelfKan", myPeerId));
-  }
-
-  Future<void> closeKan() async {
-    _handleCommandResult(await _handleCmd("callCloseKan", myPeerId));
-  }
-
-  Future<void> lateKan() async {
-    _handleCommandResult(await _handleCmd("callLateKan", myPeerId));
-  }
-
-  Future<void> setSelectedTilesForPongOrChow(List<int> selectedTiles) async {
-    _handleCommandResult(await _handleCmd(
-        "setSelectedTilesForPongOrChow", myPeerId,
-        args: {"selectedTiles": selectedTiles}));
-  }
-
-  Future<void> setSelectedTilesForOpenKan(List<int> selectedTiles) async {
-    _handleCommandResult(await _handleCmd(
-        "setSelectedTilesForOpenKan", myPeerId,
-        args: {"selectedTiles": selectedTiles}));
-  }
-
-  Future<void> setSelectedTilesForCloseKan(List<int> selectedTiles) async {
-    _handleCommandResult(await _handleCmd(
-        "setSelectedTilesForCloseKan", myPeerId,
-        args: {"selectedTiles": selectedTiles}));
-  }
-
-  Future<void> setSelectedTilesForLateKan(int tile) async {
-    _handleCommandResult(await _handleCmd(
-        "setSelectedTilesForLateKan", myPeerId,
-        args: {"tile": tile}));
-  }
-
-  void setSelectedTiles() {
-    final selectedTiles = [...handLocalState.selectingTiles];
-    handLocalState.clear();
-
-    if (table.state == TableState.selectingTilesForPong) {
-      setSelectedTilesForPongOrChow(selectedTiles);
-    }
-    if (table.state == TableState.selectingTilesForChow) {
-      setSelectedTilesForPongOrChow(selectedTiles);
-    }
-    if (table.state == TableState.selectingTilesForOpenKan) {
-      setSelectedTilesForOpenKan(selectedTiles);
-    }
-    if (table.state == TableState.selectingTilesForCloseKan) {
-      setSelectedTilesForCloseKan(selectedTiles);
-    }
-    if (table.state == TableState.selectingTilesForLateKan) {
-      setSelectedTilesForLateKan(selectedTiles[0]);
-    }
   }
 
   Future<CommandResult> _handleCmd(String commandName, String peerId,
@@ -214,30 +145,92 @@ class Game {
   }
 
   Future<void> drawTile() async {
-    _handleCommandResult(await _handleCmd("drawTile", myPeerId));
+    _handleCommandResult(await _handleCmd("handleDrawTile", myPeerId));
   }
 
   Future<void> discardTile(int tile) async {
     if (handLocalState.onCalledRiichi) {
-      _handleCommandResult(
-          await _handleCmd("discardTileWithRiichi", myPeerId, args: {"tile": tile}));
+      _handleCommandResult(await _handleCmd(
+          "handleDiscardTileWithRiichi", myPeerId,
+          args: {"tile": tile}));
     } else {
-      _handleCommandResult(
-          await _handleCmd("discardTile", myPeerId, args: {"tile": tile}));
-
+      _handleCommandResult(await _handleCmd("handleDiscardTile", myPeerId,
+          args: {"tile": tile}));
     }
   }
 
-  Future<void> openMyWall() async {
-    _handleCommandResult(await _handleCmd("openMyWall", myPeerId));
+  Future<void> call() async {
+    handLocalState.clear();
+    _handleCommandResult(await _handleCmd("handleCall", myPeerId));
   }
 
-  Future<void> ron() async {
-    _handleCommandResult(await _handleCmd("ron", myPeerId));
+  Future<void> callRon() async {
+    handLocalState.clear();
+    handLocalState.onCalledRon = true;
+    _handleCommandResult(await _handleCmd("handleCall", myPeerId));
   }
 
-  Future<void> finishHand() async {
-    _handleCommandResult(await _handleCmd("finishHand", myPeerId));
+  Future<void> cancelCall() async {
+    handLocalState.clear();
+    _handleCommandResult(await _handleCmd("handleCancelCall", myPeerId));
+  }
+
+  Future<void> win() async {
+    handLocalState.clear();
+    _handleCommandResult(await _handleCmd("handleWin", myPeerId));
+  }
+
+  int selectableTilesQuantity() {
+    final reason = handLocalState.onCalledFor;
+    if (reason == "pongOrChow") return 2;
+    if (reason == "openKan") return 3;
+    if (reason == "closeKan") return 4;
+    if (reason == "lateKanStep1") return 1;
+    return 0;
+  }
+
+  void setSelectedTiles() async {
+    final selectedTiles = [...handLocalState.selectingTiles];
+    final calledFor = handLocalState.onCalledFor;
+    if (calledFor == "pongOrChow") {
+      _handleCommandResult(await _handleCmd("handlePongOrChow", myPeerId,
+          args: {"selectedTiles": selectedTiles}));
+      handLocalState.clear();
+    }
+    if (calledFor == "openKan") {
+      _handleCommandResult(await _handleCmd("handleOpenKan", myPeerId,
+          args: {"selectedTiles": selectedTiles}));
+      handLocalState.clear();
+    }
+    if (calledFor == "lateKanStep1") {
+      handLocalState.onCalledFor = "lateKanStep2";
+      onChangedState();
+    }
+  }
+
+  void pong() {
+    handLocalState.onCalledFor = "pongOrChow";
+    onChangedState();
+  }
+
+  void chow() {
+    handLocalState.onCalledFor = "pongOrChow";
+    onChangedState();
+  }
+
+  void openKan() {
+    handLocalState.onCalledFor = "openKan";
+    onChangedState();
+  }
+
+  void closeKan() {
+    handLocalState.onCalledFor = "closeKan";
+    onChangedState();
+  }
+
+  void lateKan() {
+    handLocalState.onCalledFor = "lateKanStep1";
+    onChangedState();
   }
 
   Future<void> riichi() async {
@@ -268,6 +261,10 @@ class Game {
   void cancelTradingScore() {
     handLocalState.onTradingScore = false;
     onChangedState();
+  }
+
+  Future<void> openMyWall() async {
+    _handleCommandResult(await _handleCmd("openMyWall", myPeerId));
   }
 
   Future<void> requestScore(Map<String, int> request) async {

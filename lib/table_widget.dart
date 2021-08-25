@@ -4,6 +4,7 @@ import 'package:web_app_sample/stage_info_widget.dart';
 import 'package:web_app_sample/trading_score_widget.dart';
 import 'dart:ui' as ui;
 
+import 'called_tiles_widget.dart';
 import 'game_controller.dart' as game;
 import 'name_set_dialog.dart';
 import 'table_controller.dart' as tbl;
@@ -24,7 +25,8 @@ class GameTableWidget extends StatefulWidget {
 }
 
 class _GameTableWidgetState extends State<GameTableWidget> {
-  final Map<String, ui.Image> _imageMap = {};
+  final Map<String, ui.Image> _uiImageMap = {};
+  final Map<String, Image> _imageMap = {};
   late game.Game _game;
   late game.State _lastState;
   bool showStageAndPlayerInfo = true;
@@ -106,7 +108,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           width: tableSize,
           height: tableSize,
           child: CustomPaint(
-            painter: TablePainter(_game.myPeerId, _game.table, _imageMap),
+            painter: TablePainter(_game.myPeerId, _game.table, _uiImageMap),
           ),
         )));
 
@@ -138,7 +140,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       alignment: Alignment.center,
     ));
     widgets
-        .add(SizedBox(width: tableSize, child: MyWallWidget(gameData: _game)));
+        .add(SizedBox(width: tableSize, child: MyWallWidget(gameData: _game, imageMap: _imageMap,)));
+    widgets
+        .add(SizedBox(width: tableSize, child: MyCalledTilesWidget(gameData: _game, imageMap: _imageMap,)));
+
+
     widgets.add(SizedBox(
       width: tableSize,
       child: TableRibbonWidget(gameData: _game),
@@ -149,8 +155,9 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     );
   }
 
-  void onTileImageLoaded(Map<String, ui.Image> imageMap) {
+  void onTileImageLoaded(Map<String, ui.Image> uiImageMap, Map<String, Image> imageMap) {
     setState(() {
+      _uiImageMap.addAll(uiImageMap);
       _imageMap.addAll(imageMap);
     });
   }

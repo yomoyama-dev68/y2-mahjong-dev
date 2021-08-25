@@ -4,9 +4,11 @@ import 'game_controller.dart' as game;
 import 'table_controller.dart' as tbl;
 
 class MyWallWidget extends StatefulWidget {
-  const MyWallWidget({Key? key, required this.gameData}) : super(key: key);
+  const MyWallWidget({Key? key, required this.gameData, required this.imageMap})
+      : super(key: key);
 
   final game.Game gameData;
+  final Map<String, Image> imageMap;
 
   @override
   MyWallWidgetState createState() => MyWallWidgetState();
@@ -47,7 +49,7 @@ class MyWallWidgetState extends State<MyWallWidget> {
     return Material(
         child: Container(
             child: Ink.image(
-              image: Image.asset(_tileToImageFileUrl(tile), scale: scale).image,
+              image: getTileImage(tile).image,
               height: 59.0 / scale,
               width: 33.0 / scale,
               child: InkWell(
@@ -64,19 +66,20 @@ class MyWallWidgetState extends State<MyWallWidget> {
 
   void _onTapTile(int tile) {
     setState(() {
-      final tblState = g().table.state;
-      const waitToDiscard = [
+      int limit = g().selectableTilesQuantity();
+      if (limit > 0) {
+        _selectTile(tile, limit);
+        return;
+      }
+
+      if ([
         tbl.TableState.waitToDiscard,
         tbl.TableState.waitToDiscardForPongOrChow,
-        tbl.TableState.waitToDiscardForOpenKan,
-        tbl.TableState.waitToDiscardForCloseKan,
-        tbl.TableState.waitToDiscardForLateKan
-      ];
-      if (waitToDiscard.contains(tblState)) {
+        tbl.TableState.waitToDiscardForOpenOrLateKan,
+      ].contains(g().table.state)) {
         _selectDiscardTile(tile);
+        return;
       }
-      int limit = _selectableTilesQuantity(tblState);
-      if (limit > 0) _selectTile(tile, limit);
     });
   }
 
@@ -86,19 +89,11 @@ class MyWallWidgetState extends State<MyWallWidget> {
       selectingTiles.add(tile);
     } else if (selectingTiles.contains(tile)) {
       g().discardTile(tile);
+      selectingTiles.clear();
     } else {
       selectingTiles.clear();
       selectingTiles.add(tile);
     }
-  }
-
-  int _selectableTilesQuantity(String tblState) {
-    if (tblState == tbl.TableState.selectingTilesForPong) return 2;
-    if (tblState == tbl.TableState.selectingTilesForChow) return 2;
-    if (tblState == tbl.TableState.selectingTilesForOpenKan) return 3;
-    if (tblState == tbl.TableState.selectingTilesForCloseKan) return 4;
-    if (tblState == tbl.TableState.selectingTilesForLateKan) return 1;
-    return 0;
   }
 
   void _selectTile(int tile, limit) {
@@ -112,20 +107,11 @@ class MyWallWidgetState extends State<MyWallWidget> {
     }
   }
 
-  String _tileToImageFileUrl(int tile) {
+  Image getTileImage(int tile, [direction=4]) {
+    // direction = 0: 打牌(上向, 1: 打牌(左向, 2: 打牌(下向, 3: 打牌(右向, 4: 自牌(上向,
     final info = tbl.TileInfo(tile);
-    if (info.type == 0) {
-      return "assets/images/manzu_all/p_ms${info.number + 1}_0.gif";
-    }
-    if (info.type == 1) {
-      return "assets/images/pinzu_all/p_ps${info.number + 1}_0.gif";
-    }
-    if (info.type == 2) {
-      return "assets/images/sozu_all/p_ss${info.number + 1}_0.gif";
-    }
-    if (info.type == 3) {
-      return "assets/images/tupai_all/p_ji${info.number + 1}_0.gif";
-    }
-    return "";
+    final key = "${info.type}_${info.number}_${direction}";
+    final image = widget.imageMap[key]!;
+    return image;
   }
 }
