@@ -68,6 +68,11 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   }
 
   List<Widget> _buildForMyTurn() {
+    if (g().handLocalState.onCalledRiichi) {
+      return [
+        _buildButtonForCallCmd("リーチキャンセル", g().cancelRiichi),
+      ];
+    }
     if (g().handLocalState.onCalledTsumo) {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelTsumo),
@@ -80,9 +85,10 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         _buildButtonForCallCmd("Ok", g().win),
       ];
     }
-    if (g().handLocalState.onCalledRiichi) {
+    if (g().handLocalState.onCalledFor == "lateKanStep2") {
       return [
-        _buildButtonForCallCmd("リーチキャンセル", g().cancelRiichi),
+        _buildButtonForCallCmd("キャンセル", g().cancelCall),
+        _buildButtonForCallCmd("OK", g().setSelectedTiles),
       ];
     }
     if (g().selectableTilesQuantity() > 0) {

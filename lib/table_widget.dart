@@ -139,11 +139,21 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       children: stacks,
       alignment: Alignment.center,
     ));
+    const widgetH = (49 * 2 - 16.0) / 0.8;
+    late Widget tilesWidget;
+    if (_game.handLocalState.onCalledFor == "lateKanStep2") {
+      tilesWidget = MyCalledTilesWidget(
+        gameData: _game,
+        imageMap: _imageMap,
+      );
+    } else {
+      tilesWidget = MyWallWidget(
+        gameData: _game,
+        imageMap: _imageMap,
+      );
+    }
     widgets
-        .add(SizedBox(width: tableSize, child: MyWallWidget(gameData: _game, imageMap: _imageMap,)));
-    widgets
-        .add(SizedBox(width: tableSize, child: MyCalledTilesWidget(gameData: _game, imageMap: _imageMap,)));
-
+        .add(SizedBox(width: tableSize, height: widgetH, child: tilesWidget));
 
     widgets.add(SizedBox(
       width: tableSize,
@@ -155,7 +165,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     );
   }
 
-  void onTileImageLoaded(Map<String, ui.Image> uiImageMap, Map<String, Image> imageMap) {
+  void onTileImageLoaded(
+      Map<String, ui.Image> uiImageMap, Map<String, Image> imageMap) {
     setState(() {
       _uiImageMap.addAll(uiImageMap);
       _imageMap.addAll(imageMap);

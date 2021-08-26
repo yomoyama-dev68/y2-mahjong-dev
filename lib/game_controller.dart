@@ -206,6 +206,16 @@ class Game {
       handLocalState.onCalledFor = "lateKanStep2";
       onChangedState();
     }
+    if (calledFor == "lateKanStep2") {
+      final calledTilesIndex =
+          handLocalState.selectedCalledTilesIndexForLateKan;
+      _handleCommandResult(await _handleCmd("handleLateKan", myPeerId, args: {
+        "tile": selectedTiles[0],
+        "calledTilesIndex": calledTilesIndex
+      }));
+      handLocalState.clear();
+      onChangedState();
+    }
   }
 
   void pong() {

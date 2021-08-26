@@ -79,26 +79,16 @@ class MyCalledTilesWidgetState extends State<MyCalledTilesWidget> {
             )));
   }
 
-  void _onTapTile(int index) {
+  void _onTapTile(int calledTilesIndex) {
     setState(() {
-      _selectCalledTilesIndex(index);
+      g().handLocalState.selectedCalledTilesIndexForLateKan = calledTilesIndex;
     });
   }
 
   bool _isSelected(int index) {
     return index == g().handLocalState.selectedCalledTilesIndexForLateKan;
   }
-
-  void _selectCalledTilesIndex(int index) {
-    final selectingIndex = g().handLocalState.selectedCalledTilesIndexForLateKan;
-    if (selectingIndex == index) {
-      g().setSelectedTiles();
-    } else {
-      g().handLocalState.selectedCalledTilesIndexForLateKan = index;
-    }
-  }
-
-
+  
   Image getTileImage(int tile, [direction = 4]) {
     // direction = 0: 打牌(上向, 1: 打牌(左向, 2: 打牌(下向, 3: 打牌(右向, 4: 自牌(上向,
     final info = tbl.TileInfo(tile);

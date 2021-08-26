@@ -600,6 +600,7 @@ class Table extends TableData {
     data.tiles
       ..addAll(data.drawnTile)
       ..remove(tile);
+    data.drawnTile.clear();
 
     data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
