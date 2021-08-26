@@ -27,7 +27,7 @@ class MyCalledTilesWidgetState extends State<MyCalledTilesWidget> {
   }
 
   Widget _buildMyCalledTilesList() {
-    final selectingTiles = g().handLocalState.selectingTiles;
+    final selectingTiles = g().myTurnTempState.selectingTiles;
     final myData = g().table.playerData(g().myPeerId)!;
     final widgets = <Widget>[];
     widgets.add(const SizedBox(width: (33 / 0.8) / 2));
@@ -81,12 +81,12 @@ class MyCalledTilesWidgetState extends State<MyCalledTilesWidget> {
 
   void _onTapTile(int calledTilesIndex) {
     setState(() {
-      g().handLocalState.selectedCalledTilesIndexForLateKan = calledTilesIndex;
+      g().myTurnTempState.selectedCalledTilesIndexForLateKan = calledTilesIndex;
     });
   }
 
   bool _isSelected(int index) {
-    return index == g().handLocalState.selectedCalledTilesIndexForLateKan;
+    return index == g().myTurnTempState.selectedCalledTilesIndexForLateKan;
   }
   
   Image getTileImage(int tile, [direction = 4]) {

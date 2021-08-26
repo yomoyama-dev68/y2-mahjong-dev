@@ -28,6 +28,21 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     return g().canCommand();
   }
 
+  bool callable() {
+    if (g().table.state != tbl.TableState.drawable) {
+      return false;
+    }
+    if (g().table.lastDiscardedTile < 0) {
+      // 最初の捨て牌がない場合。
+      return false;
+    }
+    if (g().table.lastDiscardedPlayerPeerID == g().myPeerId) {
+      // 最後に捨てたのが自分の場合。
+      return false;
+    }
+    return true;
+  }
+
   String turnedPlayerName() {
     return g().member[g().table.turnedPeerId] ?? "Unknown";
   }
@@ -68,24 +83,24 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   }
 
   List<Widget> _buildForMyTurn() {
-    if (g().handLocalState.onCalledRiichi) {
+    if (g().myTurnTempState.onCalledRiichi) {
       return [
         _buildButtonForCallCmd("リーチキャンセル", g().cancelRiichi),
       ];
     }
-    if (g().handLocalState.onCalledTsumo) {
+    if (g().myTurnTempState.onCalledTsumo) {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelTsumo),
         _buildButtonForCallCmd("Ok", g().win),
       ];
     }
-    if (g().handLocalState.onCalledRon) {
+    if (g().myTurnTempState.onCalledRon) {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelCall),
         _buildButtonForCallCmd("Ok", g().win),
       ];
     }
-    if (g().handLocalState.onCalledFor == "lateKanStep2") {
+    if (g().myTurnTempState.onCalledFor == "lateKanStep2") {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelCall),
         _buildButtonForCallCmd("OK", g().setSelectedTiles),
@@ -109,17 +124,24 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     }
 
     if (tblState == tbl.TableState.drawable) {
-      return [
-        _buildButtonForCallCmd("ツモる", g().drawTile),
-        _buildButtonForCallCmd("鳴く", g().call),
-        _buildButtonForCallCmd("ロン", g().callRon),
-      ];
+      if (callable()) {
+        return [
+          _buildButtonForCallCmd("ツモる", g().drawTile),
+          _buildButtonForCallCmd("鳴く", g().call),
+          _buildButtonForCallCmd("ロン", g().callRon),
+        ];
+      } else {
+        return [
+          _buildButtonForCallCmd("ツモる", g().drawTile),
+          _buildButtonForCallCmd("鳴く", null),
+          _buildButtonForCallCmd("ロン", null),
+        ];
+      }
     }
 
     if ([
       tbl.TableState.waitToDiscard,
       tbl.TableState.waitToDiscardForOpenOrLateKan,
-      tbl.TableState.waitToDiscardForPongOrChow
     ].contains(tblState)) {
       return [
         _buildButtonForCallCmd("リーチ", g().riichi),
@@ -129,18 +151,29 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       ];
     }
 
+    if (tblState == tbl.TableState.waitToDiscardForPongOrChow) {
+      return [
+        _buildButtonForCallCmd("リーチ", null),
+        _buildButtonForCallCmd("ツモ", null),
+        _buildButtonForCallCmd("暗槓", null),
+        _buildButtonForCallCmd("加槓", null),
+      ];
+    }
+
+
     return [];
   }
 
   List<Widget> buildForOtherTurn() {
-    final tblState = g().table.state;
-    if (tblState == tbl.TableState.drawable) {
+    if (callable()) {
       return [
+        _buildButtonForCallCmd("ツモる", null),
         _buildButtonForCallCmd("鳴く", g().call),
         _buildButtonForCallCmd("ロン", g().callRon)
       ];
     }
     return [
+      _buildButtonForCallCmd("ツモる", null),
       _buildButtonForCallCmd("鳴く", null),
       _buildButtonForCallCmd("ロン", null)
     ];

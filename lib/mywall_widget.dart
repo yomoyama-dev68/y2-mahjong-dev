@@ -25,7 +25,7 @@ class MyWallWidgetState extends State<MyWallWidget> {
   }
 
   Widget _buildMyWall() {
-    final selectingTiles = g().handLocalState.selectingTiles;
+    final selectingTiles = g().myTurnTempState.selectingTiles;
     final myData = g().table.playerData(g().myPeerId)!;
     final widgets = <Widget>[];
     for (final tile in myData.tiles) {
@@ -84,7 +84,7 @@ class MyWallWidgetState extends State<MyWallWidget> {
   }
 
   void _selectDiscardTile(int tile) {
-    final selectingTiles = g().handLocalState.selectingTiles;
+    final selectingTiles = g().myTurnTempState.selectingTiles;
     if (selectingTiles.isEmpty) {
       selectingTiles.add(tile);
     } else if (selectingTiles.contains(tile)) {
@@ -97,7 +97,7 @@ class MyWallWidgetState extends State<MyWallWidget> {
   }
 
   void _selectTile(int tile, limit) {
-    final selectingTiles = g().handLocalState.selectingTiles;
+    final selectingTiles = g().myTurnTempState.selectingTiles;
     if (selectingTiles.contains(tile)) {
       selectingTiles.remove(tile);
     } else {

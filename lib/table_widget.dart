@@ -120,7 +120,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           offset: Offset(0, 40), child: StageInfoWidget(table: _game.table)));
     }
 
-    if (_game.handLocalState.onTradingScore) {
+    if (_game.myTurnTempState.onTradingScore) {
       stacks.add(SizedBox(
           width: inputFormSize,
           child: TradingScoreRequestWidget(gameData: _game)));
@@ -141,7 +141,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     ));
     const widgetH = (49 * 2 - 16.0) / 0.8;
     late Widget tilesWidget;
-    if (_game.handLocalState.onCalledFor == "lateKanStep2") {
+    if (_game.myTurnTempState.onCalledFor == "lateKanStep2") {
       tilesWidget = MyCalledTilesWidget(
         gameData: _game,
         imageMap: _imageMap,

@@ -17,7 +17,7 @@ enum State {
   onGame,
 }
 
-class HandLocalState {
+class MyTurnTempState {
   bool onCalledRiichi = false;
   bool onCalledRon = false;
   bool onCalledTsumo = false;
@@ -26,8 +26,6 @@ class HandLocalState {
   String onCalledFor = ""; //[pong, chow, open-kan, ]
   var selectedCalledTilesIndexForLateKan = -1;
   final selectingTiles = <int>[];
-
-  String lastTurnedPeerId = "";
 
   clear() {
     onCalledRiichi = false;
@@ -67,7 +65,8 @@ class Game {
   late String myPeerId;
   late Table table;
   late CommandHandler _commandHandler;
-  final handLocalState = HandLocalState();
+  String lastTurnedPeerId = "";
+  final myTurnTempState = MyTurnTempState();
 
   State state = State.onCreatingMyPeer;
 
@@ -149,7 +148,7 @@ class Game {
   }
 
   Future<void> discardTile(int tile) async {
-    if (handLocalState.onCalledRiichi) {
+    if (myTurnTempState.onCalledRiichi) {
       _handleCommandResult(await _handleCmd(
           "handleDiscardTileWithRiichi", myPeerId,
           args: {"tile": tile}));
@@ -160,28 +159,28 @@ class Game {
   }
 
   Future<void> call() async {
-    handLocalState.clear();
+    myTurnTempState.clear();
     _handleCommandResult(await _handleCmd("handleCall", myPeerId));
   }
 
   Future<void> callRon() async {
-    handLocalState.clear();
-    handLocalState.onCalledRon = true;
+    myTurnTempState.clear();
+    myTurnTempState.onCalledRon = true;
     _handleCommandResult(await _handleCmd("handleCall", myPeerId));
   }
 
   Future<void> cancelCall() async {
-    handLocalState.clear();
+    myTurnTempState.clear();
     _handleCommandResult(await _handleCmd("handleCancelCall", myPeerId));
   }
 
   Future<void> win() async {
-    handLocalState.clear();
+    myTurnTempState.clear();
     _handleCommandResult(await _handleCmd("handleWin", myPeerId));
   }
 
   int selectableTilesQuantity() {
-    final reason = handLocalState.onCalledFor;
+    final reason = myTurnTempState.onCalledFor;
     if (reason == "pongOrChow") return 2;
     if (reason == "openKan") return 3;
     if (reason == "closeKan") return 4;
@@ -190,86 +189,86 @@ class Game {
   }
 
   void setSelectedTiles() async {
-    final selectedTiles = [...handLocalState.selectingTiles];
-    final calledFor = handLocalState.onCalledFor;
+    final selectedTiles = [...myTurnTempState.selectingTiles];
+    final calledFor = myTurnTempState.onCalledFor;
     if (calledFor == "pongOrChow") {
       _handleCommandResult(await _handleCmd("handlePongOrChow", myPeerId,
           args: {"selectedTiles": selectedTiles}));
-      handLocalState.clear();
+      myTurnTempState.clear();
     }
     if (calledFor == "openKan") {
       _handleCommandResult(await _handleCmd("handleOpenKan", myPeerId,
           args: {"selectedTiles": selectedTiles}));
-      handLocalState.clear();
+      myTurnTempState.clear();
     }
     if (calledFor == "lateKanStep1") {
-      handLocalState.onCalledFor = "lateKanStep2";
+      myTurnTempState.onCalledFor = "lateKanStep2";
       onChangedState();
     }
     if (calledFor == "lateKanStep2") {
       final calledTilesIndex =
-          handLocalState.selectedCalledTilesIndexForLateKan;
+          myTurnTempState.selectedCalledTilesIndexForLateKan;
       _handleCommandResult(await _handleCmd("handleLateKan", myPeerId, args: {
         "tile": selectedTiles[0],
         "calledTilesIndex": calledTilesIndex
       }));
-      handLocalState.clear();
+      myTurnTempState.clear();
       onChangedState();
     }
   }
 
   void pong() {
-    handLocalState.onCalledFor = "pongOrChow";
+    myTurnTempState.onCalledFor = "pongOrChow";
     onChangedState();
   }
 
   void chow() {
-    handLocalState.onCalledFor = "pongOrChow";
+    myTurnTempState.onCalledFor = "pongOrChow";
     onChangedState();
   }
 
   void openKan() {
-    handLocalState.onCalledFor = "openKan";
+    myTurnTempState.onCalledFor = "openKan";
     onChangedState();
   }
 
   void closeKan() {
-    handLocalState.onCalledFor = "closeKan";
+    myTurnTempState.onCalledFor = "closeKan";
     onChangedState();
   }
 
   void lateKan() {
-    handLocalState.onCalledFor = "lateKanStep1";
+    myTurnTempState.onCalledFor = "lateKanStep1";
     onChangedState();
   }
 
   Future<void> riichi() async {
-    handLocalState.onCalledRiichi = true;
+    myTurnTempState.onCalledRiichi = true;
     onChangedState();
   }
 
   Future<void> cancelRiichi() async {
-    handLocalState.onCalledRiichi = false;
+    myTurnTempState.onCalledRiichi = false;
     onChangedState();
   }
 
   void tsumo() {
-    handLocalState.onCalledTsumo = true;
+    myTurnTempState.onCalledTsumo = true;
     onChangedState();
   }
 
   void cancelTsumo() {
-    handLocalState.onCalledTsumo = false;
+    myTurnTempState.onCalledTsumo = false;
     onChangedState();
   }
 
   void startTradingScore() {
-    handLocalState.onTradingScore = true;
+    myTurnTempState.onTradingScore = true;
     onChangedState();
   }
 
   void cancelTradingScore() {
-    handLocalState.onTradingScore = false;
+    myTurnTempState.onTradingScore = false;
     onChangedState();
   }
 
@@ -280,7 +279,7 @@ class Game {
   Future<void> requestScore(Map<String, int> request) async {
     _handleCommandResult(
         await _handleCmd("requestScore", myPeerId, args: {"request": request}));
-    handLocalState.onTradingScore = false;
+    myTurnTempState.onTradingScore = false;
     onChangedState();
   }
 
@@ -293,7 +292,7 @@ class Game {
   }
 
   Future<void> requestNextHand() async {
-    handLocalState.clear();
+    myTurnTempState.clear();
     _handleCommandResult(await _handleCmd("requestNextHand", myPeerId));
   }
 
@@ -351,11 +350,11 @@ class Game {
     // print("_skyWayOnUpdateTable: ${myName()} ${tableData}");
     table.applyData(tableData);
     // 自分のターンが終わったとき、自ターンのときの操作状態をクリアする。
-    if (handLocalState.lastTurnedPeerId == myPeerId &&
-        handLocalState.lastTurnedPeerId != table.turnedPeerId) {
-      handLocalState.clear();
+    if (lastTurnedPeerId == myPeerId &&
+        lastTurnedPeerId != table.turnedPeerId) {
+      myTurnTempState.clear();
     }
-    handLocalState.lastTurnedPeerId = table.turnedPeerId;
+    lastTurnedPeerId = table.turnedPeerId;
 
     onChangedState();
   }
