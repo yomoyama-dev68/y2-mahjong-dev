@@ -5,8 +5,10 @@ import 'package:web_app_sample/trading_score_widget.dart';
 import 'dart:ui' as ui;
 
 import 'called_tiles_widget.dart';
+import 'commad_handler.dart';
 import 'game_controller.dart' as game;
 import 'name_set_dialog.dart';
+import 'next_hand_dialog.dart';
 import 'table_controller.dart' as tbl;
 import 'tiles_painter.dart';
 import 'table_ribbon_widget.dart';
@@ -28,7 +30,6 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   final Map<String, ui.Image> _uiImageMap = {};
   final Map<String, Image> _imageMap = {};
   late game.Game _game;
-  late game.State _lastState;
   bool showStageAndPlayerInfo = true;
 
   @override
@@ -36,19 +37,58 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     print("_GameTableWidgetState:initState");
     super.initState();
     final _tileImages = TileImages(onTileImageLoaded);
-    _game = game.Game(widget.roomId, onChangeTableState);
-    _lastState = _game.state;
+    _game = game.Game(
+        roomId: widget.roomId,
+        onChangeGameState: onChangeGameState,
+        onChangeMember: onChangeMember,
+        onChangeGameTableState: onChangeGameTableState,
+        onChangeGameTableData: onChangeGameTableData,
+        onRequestScore: onRequestScore,
+        onEventGameTable: onEventGameTable,
+        onReceiveCommandResult: onReceiveCommandResult);
   }
 
-  void onChangeTableState() {
-    setState(() {});
-    // print("onChangeTableState ${_game.myName()} ${_game.state}");
-    if (_lastState != _game.state) {
-      _lastState = _game.state;
-      if (_game.state == game.State.onSettingMyName) {
-        _setMyName();
-      }
+  void onChangeGameState(game.GameState oldState, game.GameState newState) {
+    if (newState == game.GameState.onSettingMyName) {
+      _setMyName();
     }
+    setState(() {});
+  }
+
+  void onChangeMember(List<String> oldMember, List<String> newMember) {
+    setState(() {});
+  }
+
+  void onChangeGameTableState(String oldState, String newState) {
+    print("onChangeGameTableState: ${_game.myPeerId}: $oldState, $newState");
+    if (newState == tbl.TableState.waitingNextHandForNextLeader) {
+      showAcceptNextHandDialog(context, _game, "親を流して次の局を始めます。");
+    }
+    if (newState == tbl.TableState.waitingNextHandForContinueLeader) {
+      showAcceptNextHandDialog(context, _game, "連荘で次の局を始めます。");
+    }
+    if (newState == tbl.TableState.waitingNextHandForPreviousLeader) {
+      showAcceptNextHandDialog(context, _game, "一局戻します。");
+    }
+    if (newState == tbl.TableState.waitingDrawGame) {
+      showAcceptDrawGameDialog(context, _game);
+    }
+  }
+
+  void onChangeGameTableData() {
+    setState(() {});
+  }
+
+  void onRequestScore(String requester, int score) {
+    showTradingScoreAcceptDialog(context, _game, requester, score);
+  }
+
+  void onEventGameTable(String event) {
+    if (event == "onMyTurned") {}
+  }
+
+  void onReceiveCommandResult(CommandResult result) {
+    setState(() {});
   }
 
   Future<void> _setMyName() async {
@@ -70,16 +110,16 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     if (_imageMap.isEmpty) {
       return buildWaitingView("Loading images.");
     }
-    if (_game.state == game.State.onCreatingMyPeer) {
+    if (_game.state == game.GameState.onCreatingMyPeer) {
       return buildWaitingView("Creating my peer.");
     }
-    if (_game.state == game.State.onJoiningRoom) {
+    if (_game.state == game.GameState.onJoiningRoom) {
       return buildWaitingView("Creating a game room.");
     }
-    if (_game.state == game.State.onSettingMyName) {
+    if (_game.state == game.GameState.onSettingMyName) {
       return buildWaitingView("Setting my player name.");
     }
-    if (_game.state == game.State.onWaitingOtherPlayersForStart) {
+    if (_game.state == game.GameState.onWaitingOtherPlayersForStart) {
       return buildWaitingView("Waiting other players.");
     }
 
@@ -120,20 +160,6 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           offset: Offset(0, 40), child: StageInfoWidget(table: _game.table)));
     }
 
-    if (_game.myTurnTempState.onTradingScore) {
-      stacks.add(SizedBox(
-          width: inputFormSize,
-          child: TradingScoreRequestWidget(gameData: _game)));
-    }
-    final myData = _game.table.playerDataMap[_game.myPeerId];
-    if (myData != null && myData.requestingScoreFrom.isNotEmpty) {
-      stacks.add(SizedBox(
-          width: inputFormSize,
-          child: TradingScoreAcceptWidget(
-              gameData: _game,
-              requestingScoreFrom: myData.requestingScoreFrom)));
-    }
-
     final widgets = <Widget>[];
     widgets.add(Stack(
       children: stacks,
@@ -141,6 +167,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     ));
     const widgetH = (49 * 2 - 16.0) / 0.8;
     late Widget tilesWidget;
+    print("buildBody: _game.myTurnTempState.onCalledFor= ${_game.myTurnTempState.onCalledFor}");
+
     if (_game.myTurnTempState.onCalledFor == "lateKanStep2") {
       tilesWidget = MyCalledTilesWidget(
         gameData: _game,
@@ -203,14 +231,15 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     for (int direction = 0; direction < 4; direction++) {
       final index = (direction + baseIndex) % 4;
       final leaderIndex = (4 + (index - leaderBaseIndex)) % 4;
-      final data = _game.table.playerDataMap[playerOrder[index]]!;
-
+      final peerId = playerOrder[index];
+      final data = _game.table.playerDataMap[peerId]!;
+      final turned = _game.table.turnedPeerId == peerId;
       widgets.add(Transform.translate(
           offset: offsets[direction],
           child: Transform.rotate(
               angle: angles[direction],
               child: PlayerStateTile(winds[leaderIndex], data.name, data.score,
-                  data.riichiTile.isNotEmpty))));
+                  data.riichiTile.isNotEmpty, turned))));
     }
 
     return widgets;

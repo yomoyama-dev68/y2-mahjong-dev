@@ -1,87 +1,113 @@
 import 'package:flutter/material.dart';
 import 'game_controller.dart' as game;
 
+void showTradingScoreAcceptDialog(
+    BuildContext context, game.Game gameData, String requester, int score) {
+  final content = TradingScoreAcceptWidget(
+    gameData: gameData,
+    requester: requester,
+    score: score,
+  );
+  showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('点棒支払を受け入れますか？'),
+          content: content,
+          actions: <Widget>[
+            SimpleDialogOption(
+              child: Text('キャンセル'),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+            SimpleDialogOption(
+              child: Text('OK'),
+              onPressed: () {
+                content.doAccept();
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      });
+}
+
 class TradingScoreAcceptWidget extends StatelessWidget {
   const TradingScoreAcceptWidget(
-      {Key? key, required this.gameData, required this.requestingScoreFrom})
+      {Key? key,
+      required this.gameData,
+      required this.requester,
+      required this.score})
       : super(key: key);
 
   final game.Game gameData;
-  final Map<String, int> requestingScoreFrom;
+  final String requester;
+  final int score;
+
+  void doAccept() {
+    gameData.acceptRequestedScore(requester, score);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final widgets = <Widget>[
-      const Text("点棒支払を受け入れますか？"),
-      const SizedBox(
-        height: 10,
-      )
-    ];
+    final name = gameData.member[requester];
+    final textController = TextEditingController();
+    textController.text = score.toString();
 
-    final textControllerMap = <String, TextEditingController>{};
-
-    for (final e in gameData.member.entries) {
-      if (gameData.myPeerId == e.key) continue;
-      if (!requestingScoreFrom.containsKey(e.key)) continue;
-      final score = requestingScoreFrom[e.key].toString();
-      final textController = TextEditingController();
-      textControllerMap[e.key] = textController;
-      textController.text = score;
-      widgets.add(TextField(
-        controller: textController,
-        readOnly: true,
-        decoration: InputDecoration(
-            labelText: "${e.value}から", border: const OutlineInputBorder()),
-      ));
-      widgets.add(const SizedBox(
-        height: 10,
-      ));
-    }
-
-    widgets.add(Row(children: [
-      const Spacer(),
-      ElevatedButton(
-        child: const Text("No"),
-        onPressed: () {
-          gameData.refuseRequestedScore();
-        },
-      ),
-      const SizedBox(
-        width: 5,
-      ),
-      ElevatedButton(
-        child: const Text("OK"),
-        onPressed: () {
-          gameData.acceptRequestedScore();
-        },
-      )
-    ]));
-    return Container(
-      decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.all(Radius.circular(5))),
-      padding: const EdgeInsets.all(5),
-      child: Column(mainAxisSize: MainAxisSize.min,children: widgets),
+    return TextField(
+      controller: textController,
+      readOnly: true,
+      decoration: InputDecoration(
+          labelText: "${name}から", border: const OutlineInputBorder()),
     );
   }
 }
 
+void showTradingScoreRequestDialog(BuildContext context, game.Game gameData) {
+  final content = TradingScoreRequestWidget(gameData: gameData);
+  showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('点棒支払'),
+          content: content,
+          actions: <Widget>[
+            SimpleDialogOption(
+              child: Text('キャンセル'),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+            SimpleDialogOption(
+              child: Text('OK'),
+              onPressed: () {
+                content.doRequest();
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      });
+}
+
 class TradingScoreRequestWidget extends StatelessWidget {
-  const TradingScoreRequestWidget({Key? key, required this.gameData})
+  TradingScoreRequestWidget({Key? key, required this.gameData})
       : super(key: key);
 
   final game.Game gameData;
+  final textControllerMap = <String, TextEditingController>{};
+
+  void doRequest() {
+    final request = textControllerMap
+        .map((key, value) => MapEntry(key, int.tryParse(value.text) ?? 0));
+    request.removeWhere((key, value) => value == 0);
+    gameData.requestScore(request);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final widgets = <Widget>[
-      const Text("点棒支払"),
-      const SizedBox(
-        height: 10,
-      )
-    ];
-
-    final textControllerMap = <String, TextEditingController>{};
+    final widgets = <Widget>[];
 
     for (final e in gameData.member.entries) {
       final textController = TextEditingController();
@@ -99,32 +125,7 @@ class TradingScoreRequestWidget extends StatelessWidget {
       ));
     }
 
-    widgets.add(Row(children: [
-      Spacer(),
-      ElevatedButton(
-        child: const Text("Cancel"),
-        onPressed: () {
-          gameData.cancelTradingScore();
-        },
-      ),
-      const SizedBox(
-        width: 5,
-      ),
-      ElevatedButton(
-        child: const Text("OK"),
-        onPressed: () {
-          final request = textControllerMap.map(
-              (key, value) => MapEntry(key, int.tryParse(value.text) ?? 0));
-          request.removeWhere((key, value) => value == 0);
-          gameData.requestScore(request);
-        },
-      )
-    ]));
-    return Container(
-      decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.all(Radius.circular(5))),
-      padding: const EdgeInsets.all(5),
+    return SingleChildScrollView(
       child: Column(children: widgets),
     );
   }

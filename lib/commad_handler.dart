@@ -61,10 +61,12 @@ class CommandHandler {
       "resultTimestamp": DateTime.now().millisecondsSinceEpoch,
       "result": result.toMap(),
     };
+    print("sendCommandResult: $tmp");
     skyWay.sendData(jsonEncode(tmp));
   }
 
   void onReceiveCommandResult(Map<String, dynamic> data, String myPeerId) {
+    print("onReceiveCommandResult: $data");
     final peerId = data["commander"] as String;
     if (peerId != myPeerId) return;
     final commandTimestamp = data["commandTimestamp"] as int;
@@ -73,6 +75,7 @@ class CommandHandler {
     final result = CommandResult.fromJsonMap(resultJsonMap);
 
     final completer = _completerMap.remove(commandTimestamp);
+    print("onReceiveCommandResult: $_completerMap");
     if (completer != null) completer.complete(result);
   }
 }

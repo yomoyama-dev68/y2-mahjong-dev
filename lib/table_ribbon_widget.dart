@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:web_app_sample/trading_score_widget.dart';
 import 'dart:ui' as ui;
 
 import 'game_controller.dart' as game;
+import 'next_hand_dialog.dart';
 import 'table_controller.dart' as tbl;
 
 class TableRibbonWidget extends StatefulWidget {
@@ -18,13 +20,8 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     return widget.gameData;
   }
 
-  bool isWaitingNextHand() {
-    final myData = g().table.playerDataMap[g().myPeerId];
-    if (myData == null) return false;
-    return myData.waitingNextHand;
-  }
-
   bool canCmd() {
+    // print ("canCmd: ${g().myPeerId}: ${g().canCommand()}");
     return g().canCommand();
   }
 
@@ -55,23 +52,19 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         tblState == tbl.TableState.doingSetupHand) {
       return const Text("セットアップなう");
     }
-    if (tblState == tbl.TableState.processingFinishHand) {
-      if (isWaitingNextHand()) {
-        return Text("次局の開始を待っています。");
-      } else {
-        return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: _buildRibbonForFinishHand());
-      }
-    }
 
+    if (tblState == tbl.TableState.processingFinishHand) {
+      return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: _buildRibbonForFinishHand());
+    }
     if (g().isMyTurn()) {
       return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: _buildForMyTurn());
     } else {
       return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: buildForOtherTurn());
     }
   }
@@ -79,13 +72,19 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   Widget _buildButtonForCallCmd(String text, Function? func) {
     return ElevatedButton(
         child: Text(text),
-        onPressed: canCmd() && (func != null) ? () => func() : null);
+        onPressed: canCmd() && (func != null)
+            ? () {
+                func();
+                setState(() {});
+              }
+            : null);
   }
 
   List<Widget> _buildForMyTurn() {
     if (g().myTurnTempState.onCalledRiichi) {
       return [
         _buildButtonForCallCmd("リーチキャンセル", g().cancelRiichi),
+        _buildPopupMenu()
       ];
     }
     if (g().myTurnTempState.onCalledTsumo) {
@@ -120,7 +119,8 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         _buildButtonForCallCmd("ポン", g().pong),
         _buildButtonForCallCmd("チー", g().chow),
         _buildButtonForCallCmd("カン", g().openKan),
-      ];
+       _buildPopupMenu()
+    ];
     }
 
     if (tblState == tbl.TableState.drawable) {
@@ -129,12 +129,14 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           _buildButtonForCallCmd("ツモる", g().drawTile),
           _buildButtonForCallCmd("鳴く", g().call),
           _buildButtonForCallCmd("ロン", g().callRon),
+          _buildPopupMenu()
         ];
       } else {
         return [
           _buildButtonForCallCmd("ツモる", g().drawTile),
           _buildButtonForCallCmd("鳴く", null),
           _buildButtonForCallCmd("ロン", null),
+          _buildPopupMenu()
         ];
       }
     }
@@ -148,6 +150,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         _buildButtonForCallCmd("ツモ", g().tsumo),
         _buildButtonForCallCmd("暗槓", g().closeKan),
         _buildButtonForCallCmd("加槓", g().lateKan),
+        _buildPopupMenu()
       ];
     }
 
@@ -157,9 +160,9 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         _buildButtonForCallCmd("ツモ", null),
         _buildButtonForCallCmd("暗槓", null),
         _buildButtonForCallCmd("加槓", null),
+        _buildPopupMenu()
       ];
     }
-
 
     return [];
   }
@@ -169,35 +172,48 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       return [
         _buildButtonForCallCmd("ツモる", null),
         _buildButtonForCallCmd("鳴く", g().call),
-        _buildButtonForCallCmd("ロン", g().callRon)
+        _buildButtonForCallCmd("ロン", g().callRon),
+        _buildPopupMenu()
       ];
     }
     return [
       _buildButtonForCallCmd("ツモる", null),
       _buildButtonForCallCmd("鳴く", null),
-      _buildButtonForCallCmd("ロン", null)
+      _buildButtonForCallCmd("ロン", null),
+      _buildPopupMenu()
     ];
   }
 
   List<Widget> _buildRibbonForFinishHand() {
     return [
-      _buildButtonForCallCmd("牌オープン", g().openMyWall),
-      _buildButtonForCallCmd("点棒支払", g().startTradingScore),
-      _buildButtonForCallCmd("次局へ", g().requestNextHand),
+      _buildButtonForCallCmd("手牌オープン", g().openMyWall),
+      _buildButtonForCallCmd("点棒支払", () {
+        showTradingScoreRequestDialog(context, g());
+      }),
+      _buildButtonForCallCmd("次局へ", () {
+        showRequestNextHandDialog(context, g());
+      }),
+      _buildButtonForCallCmd("ゲームリセット", g().requestNextHand),
     ];
   }
 
   Widget _buildPopupMenu() {
+    final enabledDrawGame = g().table.state == tbl.TableState.drawable;
     return PopupMenuButton<String>(
       onSelected: _onSelectedPopupMenu,
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         const PopupMenuItem<String>(
           value: "openMyWall",
-          child: Text("牌オープン"),
+          child: Text("手牌オープン"),
         ),
         const PopupMenuItem<String>(
           value: "startTradingScore",
           child: Text('点棒支払'),
+        ),
+        PopupMenuItem<String>(
+          value: "drawGame",
+          child: Text('流局'),
+          enabled: enabledDrawGame,
         ),
       ],
     );
@@ -205,6 +221,9 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
 
   void _onSelectedPopupMenu(String menu) {
     if (menu == "openMyWall") g().openMyWall();
-    if (menu == "startTradingScore") g().startTradingScore();
+    if (menu == "startTradingScore") {
+      showTradingScoreRequestDialog(context, g());
+    }
+    if (menu == "drawGame") g().requestDrawGame();
   }
 }

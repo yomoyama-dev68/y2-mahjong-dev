@@ -8,7 +8,7 @@ import 'commad_handler.dart';
 const skyWayKey = '05bd41ee-71ec-4d8b-bd68-f6b7e1172b76';
 const roomMode = "mesh";
 
-enum State {
+enum GameState {
   onCreatingMyPeer,
   onJoiningRoom,
   onSettingMyName,
@@ -21,7 +21,6 @@ class MyTurnTempState {
   bool onCalledRiichi = false;
   bool onCalledRon = false;
   bool onCalledTsumo = false;
-  bool onTradingScore = false;
 
   String onCalledFor = ""; //[pong, chow, open-kan, ]
   var selectedCalledTilesIndexForLateKan = -1;
@@ -31,7 +30,6 @@ class MyTurnTempState {
     onCalledRiichi = false;
     onCalledRon = false;
     onCalledTsumo = false;
-    onTradingScore = false;
     onCalledFor = "";
     selectedCalledTilesIndexForLateKan = -1;
     selectingTiles.clear();
@@ -39,13 +37,21 @@ class MyTurnTempState {
 }
 
 class Game {
-  Game(this.roomId, this.onChangedState) {
+  Game(
+      {required this.roomId,
+      required this.onChangeGameState,
+      required this.onChangeMember,
+      required this.onChangeGameTableState,
+      required this.onRequestScore,
+      required this.onEventGameTable,
+      required this.onChangeGameTableData,
+      required this.onReceiveCommandResult}) {
     table = Table(_tableOnUpdateTable);
+    oldTableData = table.toMap();
     skyWay.newPeer(skyWayKey, 3, (peerId) {
       _commandHandler = CommandHandler(skyWay);
       myPeerId = peerId;
-      state = State.onJoiningRoom;
-      onChangedState();
+      _setState(GameState.onJoiningRoom);
       skyWay.joinRoom(
           roomId,
           roomMode,
@@ -60,15 +66,29 @@ class Game {
 
   final skyWay = wrapper.SkyWayHelper(useStab: true);
   final roomId;
-  final Function onChangedState;
+  final Function(GameState, GameState) onChangeGameState;
+  final Function(List<String>, List<String>) onChangeMember;
+  final Function(String, String) onChangeGameTableState;
+  final Function(String, int) onRequestScore;
+  final Function onEventGameTable;
+  final Function onChangeGameTableData;
+  final Function(CommandResult) onReceiveCommandResult;
+
   final member = <String, String>{};
   late String myPeerId;
   late Table table;
+  late Map<String, dynamic> oldTableData;
   late CommandHandler _commandHandler;
   String lastTurnedPeerId = "";
   final myTurnTempState = MyTurnTempState();
 
-  State state = State.onCreatingMyPeer;
+  GameState state = GameState.onCreatingMyPeer;
+
+  void _setState(GameState newState) {
+    final oldState = state;
+    state = newState;
+    onChangeGameState(oldState, state);
+  }
 
   String myName() {
     return member[myPeerId] ?? "";
@@ -76,14 +96,13 @@ class Game {
 
   void setMyName(String name) {
     print("setMyName: ${myPeerId}, ${name}");
-    state = State.onWaitingOtherPlayersForStart;
+    _setState(GameState.onWaitingOtherPlayersForStart);
     _onUpdateMemberMap(myPeerId, name);
     final tmp = <String, dynamic>{
       "type": "notifyMyName",
       "name": name,
     };
     skyWay.sendData(jsonEncode(tmp));
-    onChangedState();
   }
 
   bool canCommand() {
@@ -106,21 +125,25 @@ class Game {
       "handleOpenKan": table.handleOpenKan,
       "handleCloseKan": table.handleCloseKan,
       "handleLateKan": table.handleLateKan,
-      "openMyWall": table.handleOpenTiles,
-      "requestScore": table.handleRequestScore,
-      "acceptRequestedScore": table.handleAcceptRequestedScore,
-      "refuseRequestedScore": table.handleRefuseRequestedScore,
-      "requestNextHand": table.handleRequestNextHand,
+      "handleOpenTiles": table.handleOpenTiles,
+      "handleRequestScore": table.handleRequestScore,
+      "handleAcceptRequestedScore": table.handleAcceptRequestedScore,
+      "handleRequestDrawGame": table.handleRequestDrawGame,
+      "handleAcceptDrawGame": table.handleAcceptDrawGame,
+      "handleRefuseDrawGame": table.handleRefuseDrawGame,
+      "handleRequestNextHand": table.handleRequestNextHand,
+      "handleAcceptNextHand": table.handleAcceptNextHand,
+      "handleRefuseNextHand": table.handleRefuseNextHand,
     };
   }
 
   Future<CommandResult> _handleCmd(String commandName, String peerId,
       {Map<String, dynamic> args = const {}, viaNet = false}) async {
+    print("_handleCmd: ${commandName}: ${args}");
+    if (viaNet) print("viaNet: _handleCmd: ${commandName}: ${args}");
     // Ownerプレーヤーから直接呼ばれた場合は、公平さのため通信時間を考慮した待機時間を入れる。
     if (!viaNet) await Future.delayed(const Duration(microseconds: 50));
 
-    print("_handleCmd: ${commandName}: ${args}");
-    if (viaNet) print("viaNet: _handleCmd: ${commandName}: ${args}");
     if (_isOwner()) {
       final Function f = commandMap()[commandName]!;
       final namedArguments = <Symbol, dynamic>{const Symbol("peerId"): peerId};
@@ -135,12 +158,13 @@ class Game {
       }
       return CommandResult(CommandResultStateCode.ok, "");
     }
+
     return _commandHandler.sendCommand(peerId, commandName, args);
   }
 
   void _handleCommandResult(CommandResult result) {
-    print("_handleCommandResult: ${result.message}");
-    onChangedState();
+    print("_handleCommandResult: ${result}");
+    onReceiveCommandResult(result);
   }
 
   Future<void> drawTile() async {
@@ -156,15 +180,14 @@ class Game {
       _handleCommandResult(await _handleCmd("handleDiscardTile", myPeerId,
           args: {"tile": tile}));
     }
+    myTurnTempState.clear();
   }
 
   Future<void> call() async {
-    myTurnTempState.clear();
     _handleCommandResult(await _handleCmd("handleCall", myPeerId));
   }
 
   Future<void> callRon() async {
-    myTurnTempState.clear();
     myTurnTempState.onCalledRon = true;
     _handleCommandResult(await _handleCmd("handleCall", myPeerId));
   }
@@ -201,10 +224,18 @@ class Game {
           args: {"selectedTiles": selectedTiles}));
       myTurnTempState.clear();
     }
+    if (calledFor == "closeKan") {
+      _handleCommandResult(await _handleCmd("handleCloseKan", myPeerId,
+          args: {"selectedTiles": selectedTiles}));
+      myTurnTempState.clear();
+    }
+
     if (calledFor == "lateKanStep1") {
       myTurnTempState.onCalledFor = "lateKanStep2";
-      onChangedState();
+      print("calledFor == lateKanStep1");
+      onChangeGameTableData();
     }
+
     if (calledFor == "lateKanStep2") {
       final calledTilesIndex =
           myTurnTempState.selectedCalledTilesIndexForLateKan;
@@ -213,93 +244,91 @@ class Game {
         "calledTilesIndex": calledTilesIndex
       }));
       myTurnTempState.clear();
-      onChangedState();
     }
   }
 
   void pong() {
     myTurnTempState.onCalledFor = "pongOrChow";
-    onChangedState();
   }
 
   void chow() {
     myTurnTempState.onCalledFor = "pongOrChow";
-    onChangedState();
   }
 
   void openKan() {
     myTurnTempState.onCalledFor = "openKan";
-    onChangedState();
   }
 
   void closeKan() {
     myTurnTempState.onCalledFor = "closeKan";
-    onChangedState();
   }
 
   void lateKan() {
     myTurnTempState.onCalledFor = "lateKanStep1";
-    onChangedState();
   }
 
-  Future<void> riichi() async {
+  void riichi() async {
     myTurnTempState.onCalledRiichi = true;
-    onChangedState();
   }
 
-  Future<void> cancelRiichi() async {
+  void cancelRiichi() async {
     myTurnTempState.onCalledRiichi = false;
-    onChangedState();
   }
 
   void tsumo() {
     myTurnTempState.onCalledTsumo = true;
-    onChangedState();
   }
 
   void cancelTsumo() {
     myTurnTempState.onCalledTsumo = false;
-    onChangedState();
-  }
-
-  void startTradingScore() {
-    myTurnTempState.onTradingScore = true;
-    onChangedState();
-  }
-
-  void cancelTradingScore() {
-    myTurnTempState.onTradingScore = false;
-    onChangedState();
   }
 
   Future<void> openMyWall() async {
-    _handleCommandResult(await _handleCmd("openMyWall", myPeerId));
+    _handleCommandResult(await _handleCmd("handleOpenTiles", myPeerId));
   }
 
   Future<void> requestScore(Map<String, int> request) async {
-    _handleCommandResult(
-        await _handleCmd("requestScore", myPeerId, args: {"request": request}));
-    myTurnTempState.onTradingScore = false;
-    onChangedState();
+    final tmp = <String, dynamic>{
+      "type": "requestScore",
+      "request": request,
+    };
+    skyWay.sendData(jsonEncode(tmp));
   }
 
-  Future<void> acceptRequestedScore() async {
-    _handleCommandResult(await _handleCmd("acceptRequestedScore", myPeerId));
+  Future<void> acceptRequestedScore(String requester, int score) async {
+    _handleCommandResult(await _handleCmd(
+        "handleAcceptRequestedScore", myPeerId,
+        args: {"requester": requester, "score": score}));
   }
 
-  Future<void> refuseRequestedScore() async {
-    _handleCommandResult(await _handleCmd("refuseRequestedScore", myPeerId));
+  Future<void> requestDrawGame() async {
+    _handleCommandResult(await _handleCmd("handleRequestDrawGame", myPeerId));
   }
 
-  Future<void> requestNextHand() async {
-    myTurnTempState.clear();
-    _handleCommandResult(await _handleCmd("requestNextHand", myPeerId));
+  Future<void> acceptDrawGame() async {
+    _handleCommandResult(await _handleCmd("handleAcceptDrawGame", myPeerId));
+  }
+
+  Future<void> refuseDrawGame() async {
+    _handleCommandResult(await _handleCmd("handleRefuseDrawGame", myPeerId));
+  }
+
+  Future<void> requestNextHand(String mode) async {
+    _handleCommandResult(await _handleCmd("handleRequestNextHand", myPeerId,
+        args: {"mode": mode}));
+  }
+
+  Future<void> acceptNextHand() async {
+    _handleCommandResult(await _handleCmd("handleAcceptNextHand", myPeerId));
+  }
+
+  Future<void> refuseNextHand() async {
+    _handleCommandResult(await _handleCmd("handleRefuseNextHand", myPeerId));
   }
 
   void _skyWayOnOpen() {
     print("_skyWayOnOpen: $myPeerId");
-    state = State.onSettingMyName;
-    onChangedState();
+    _setState(GameState.onSettingMyName);
   }
 
   void _skyWayOnPeerJoin(String peerId) {
@@ -317,7 +346,7 @@ class Game {
   void _skyWayOnPeerLeave(String peerId) {
     print("_skyWayOnPeerLeave: $peerId");
     member.remove(peerId);
-    state = State.onWaitingOtherPlayersInGame;
+    _setState(GameState.onWaitingOtherPlayersInGame);
   }
 
   void _skyWayOnClose() {
@@ -333,6 +362,13 @@ class Game {
       _onUpdateMemberMap(senderPeerId, name);
     }
 
+    if (dataType == "requestScore") {
+      final request = data["request"] as Map<String, dynamic>;
+      if (request.containsKey(myPeerId)) {
+        onRequestScore(senderPeerId, request[myPeerId]);
+      }
+    }
+
     if (dataType == "command") {
       _skyWayOnReceiveCommand(data);
     }
@@ -346,17 +382,27 @@ class Game {
     }
   }
 
-  void _skyWayOnUpdateTable(Map<String, dynamic> tableData) {
-    // print("_skyWayOnUpdateTable: ${myName()} ${tableData}");
-    table.applyData(tableData);
-    // 自分のターンが終わったとき、自ターンのときの操作状態をクリアする。
-    if (lastTurnedPeerId == myPeerId &&
-        lastTurnedPeerId != table.turnedPeerId) {
-      myTurnTempState.clear();
+  void _notifyUpdatedTableData(
+      Map<String, dynamic> oldData, Map<String, dynamic> newData) {
+    print("_notifyUpdatedTableData: ${myPeerId}");
+    if (oldData["state"] != newData["state"]) {
+      onChangeGameTableState(oldData["state"], newData["state"]);
     }
-    lastTurnedPeerId = table.turnedPeerId;
 
-    onChangedState();
+    if (oldData["turnedPeerId"] != newData["turnedPeerId"]) {
+      if (newData["turnedPeerId"] == myPeerId) {
+        onEventGameTable("onMyTurned");
+      }
+    }
+
+    onChangeGameTableData();
+  }
+
+  void _skyWayOnUpdateTable(Map<String, dynamic> newTableData) {
+    print("_skyWayOnUpdateTable: ${myPeerId}");
+    table.applyData(newTableData);
+    _notifyUpdatedTableData(oldTableData, newTableData);
+    oldTableData = newTableData;
   }
 
   void _skyWayOnReceiveCommand(Map<String, dynamic> data) {
@@ -373,19 +419,21 @@ class Game {
 
   // caller:self or skyWay
   void _onUpdateMemberMap(String peerId, String name) {
+    final oldMember = member.values.toList();
     member[peerId] = name;
+    final newMember = member.values.toList();
+    onChangeMember(oldMember, newMember);
+
     print("_onUpdateMemberMap: ${myName()}: ${member.length}");
     if (member.length == 4) {
-      if (state == State.onWaitingOtherPlayersForStart) {
-        state = State.onGame;
+      if (state == GameState.onWaitingOtherPlayersForStart) {
+        _setState(GameState.onGame);
         if (_isOwner()) {
           print("_onUpdateMemberMap: ${myName()} _isOwner. startGame");
           _startGame();
         }
       }
     }
-
-    onChangedState();
   }
 
   bool _isOwner() {
@@ -400,12 +448,17 @@ class Game {
     table.nextLeader();
   }
 
+  // Called from TableController.
   void _tableOnUpdateTable() {
+    final newTableData = table.toMap();
+
     final tmp = <String, dynamic>{
       "type": "updateTableData",
-      "data": table.toMap(),
+      "data": newTableData,
     };
     skyWay.sendData(jsonEncode(tmp));
-    onChangedState();
+
+    _notifyUpdatedTableData(oldTableData, newTableData);
+    oldTableData = newTableData;
   }
 }

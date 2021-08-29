@@ -57,11 +57,14 @@ class MyCalledTilesWidgetState extends State<MyCalledTilesWidget> {
       if (tileDirection != 0) {
         if (fromOtherTiles.isEmpty) {
           widgets.add(Stack(children: fromOtherTiles));
+          fromOtherTiles.add(getTileImage(tile, tileDirection));
+        } else {
+          fromOtherTiles.insert(
+              0,
+              Transform.translate(
+                  offset: Offset(0, -offsetH),
+                  child: getTileImage(tile, tileDirection)));
         }
-        fromOtherTiles.add(Transform.translate(
-            offset: Offset(0, -offsetH),
-            child: getTileImage(tile, tileDirection)));
-        fromOtherTiles.add(getTileImage(tile, tileDirection));
       } else {
         widgets.add(getTileImage(tile, tileDirection));
       }
@@ -88,7 +91,7 @@ class MyCalledTilesWidgetState extends State<MyCalledTilesWidget> {
   bool _isSelected(int index) {
     return index == g().myTurnTempState.selectedCalledTilesIndexForLateKan;
   }
-  
+
   Image getTileImage(int tile, [direction = 4]) {
     // direction = 0: 打牌(上向, 1: 打牌(左向, 2: 打牌(下向, 3: 打牌(右向, 4: 自牌(上向,
     final info = tbl.TileInfo(tile);

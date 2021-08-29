@@ -69,7 +69,9 @@ class PlayerData {
     data.requestingScoreFrom.addAll(
         (map["requestingScoreFrom"] as Map<String, dynamic>)
             .map((key, value) => MapEntry(key, value as int)));
-    data.waitingNextHand = map["waitingNextHand"] as bool;
+
+    data.acceptedDrawGame = map["acceptedDrawGame"] as bool;
+    data.acceptedNextHand = map["acceptedNextHand"] as bool;
     data.score = map["score"] as int;
     data.openTiles = map["openTiles"];
     data.tiles.addAll(_toListInt(map["tiles"]));
@@ -85,7 +87,8 @@ class PlayerData {
 
   final String name;
   final requestingScoreFrom = <String, int>{};
-  bool waitingNextHand = false;
+  bool acceptedDrawGame = false;
+  bool acceptedNextHand = false;
   int score = 25000;
   bool openTiles = false;
 
@@ -104,6 +107,10 @@ class PlayerData {
     calledTiles.clear();
     calledTilesByOther.clear();
     riichiTile.clear();
+
+    requestingScoreFrom.clear();
+    acceptedDrawGame = false;
+    acceptedNextHand = false;
   }
 
   Map<String, dynamic> toMap() {
@@ -111,7 +118,8 @@ class PlayerData {
     map["name"] = name;
     map["score"] = score;
     map["requestingScoreFrom"] = requestingScoreFrom;
-    map["waitingNextHand"] = waitingNextHand;
+    map["acceptedDrawGame"] = acceptedDrawGame;
+    map["acceptedNextHand"] = acceptedNextHand;
     map["openTiles"] = openTiles;
     map["drawnTile"] = drawnTile;
     map["tiles"] = tiles;
@@ -157,8 +165,15 @@ class TableState {
   static const waitToDiscardForPongOrChow = "waitToDiscardForPongOrChow";
   static const called = "called";
 
+  // nextLeader, previousLeader, continueLeader
+  static const waitingDrawGame = "waitingDrawGame";
   static const drawGame = "drawGame";
   static const processingFinishHand = "processingFinishHand";
+  static const waitingNextHandForNextLeader = "waitingNextHandForNextLeader";
+  static const waitingNextHandForPreviousLeader =
+      "waitingNextHandForPreviousLeader";
+  static const waitingNextHandForContinueLeader =
+      "waitingNextHandForContinueLeader";
 }
 
 class TableData {
@@ -166,7 +181,6 @@ class TableData {
   Map<String, PlayerData> playerDataMap = {}; // 親順ソート済み
   int leaderChangeCount = -1; // 局数: 0~3:東場, 4~7:南場,
   int leaderContinuousCount = 0; // 場数（親継続数）
-  String lastWinner = "";
   int remainRiichiBarCounts = 0; // リーチ供託棒数
 
   // 局中関連
@@ -259,18 +273,6 @@ class Table extends TableData {
     }
   }
 
-  void nextHand() {
-    for (final data in playerDataMap.values) {
-      data.waitingNextHand = false;
-    }
-
-    if (lastWinner == currentLeader()) {
-      continueLeader();
-    } else {
-      nextLeader();
-    }
-  }
-
   void nextLeader() {
     assert(playerDataMap.length == 4);
     leaderChangeCount += 1;
@@ -290,6 +292,11 @@ class Table extends TableData {
     leaderContinuousCount += 1;
     _updateTableListener();
     _setupHand();
+  }
+
+  void setLeaderContinuousCount(int count) {
+    leaderContinuousCount = count;
+    _updateTableListener();
   }
 
   List<int> _createShuffledTiles() {
@@ -374,12 +381,7 @@ class Table extends TableData {
       }
     }
 
-    _onFinishedHand();
-  }
-
-  void _onFinishedHand() {
     state = TableState.processingFinishHand;
-    lastWinner = turnedPeerId;
     _updateTableListener();
   }
 
@@ -508,7 +510,7 @@ class Table extends TableData {
     playerData(turnedPeerId)!.score += remainRiichiBarCounts * 1000;
     remainRiichiBarCounts = 0;
 
-    _onFinishedHand();
+    state = TableState.processingFinishHand;
     _updateTableListener();
   }
 
@@ -565,8 +567,12 @@ class Table extends TableData {
     data.calledTiles
         .add(CalledTiles(-1, peerId, _toListInt(selectedTiles), "close-kan"));
     // 鳴き牌を持ち牌から除外
+
+    // 鳴き牌を持ち牌から除外
+    data.tiles.addAll(data.drawnTile);
+    data.drawnTile.clear();
     for (final tile in selectedTiles) {
-      data.tiles.remove(tile); // TODO: 除外する牌が存在しているか確認するべき。
+      assert(data.tiles.remove(tile));
     }
 
     data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
@@ -592,6 +598,9 @@ class Table extends TableData {
 
     // ポンした刻子を小明槓にして入れ直す。
     final pongTiles = data.calledTiles[calledTilesIndex];
+    if (pongTiles.selectedTiles.length > 2) {
+      throw RefuseException("Late kan can do to only pong tiles.");
+    }
     final selectedTiles = <int>[...pongTiles.selectedTiles, tile];
     final lateKanTiles = CalledTiles(
         pongTiles.calledTile, pongTiles.calledFrom, selectedTiles, "late-kan");
@@ -642,43 +651,110 @@ class Table extends TableData {
     _updateTableListener();
   }
 
-  handleAcceptRequestedScore({required String peerId}) {
+  handleAcceptRequestedScore({required String peerId, required String requester, required int score}) {
     _checkState(peerId);
+    final data1 = playerData(peerId)!;
+    final data2 = playerData(requester)!;
+    data1.score -= score;
+    data2.score += score;
+    _updateTableListener();
+  }
 
-    final data = playerData(peerId)!;
-    for (final e in data.requestingScoreFrom.entries) {
-      final requester = e.key;
-      final score = e.value;
+  handleRequestNextHand({required String peerId, required String mode}) {
+    _checkState(peerId,
+        needMyTurn: false, allowTableState: [TableState.processingFinishHand]);
 
-      final requesterData = playerData(requester)!;
-      requesterData.score -= score;
-      data.score += score;
+    for (final data in playerDataMap.values) {
+      data.acceptedNextHand = false;
     }
-
-    data.requestingScoreFrom.clear();
+    if (mode == "nextLeader") {
+      state = TableState.waitingNextHandForNextLeader;
+    }
+    if (mode == "continueLeader") {
+      state = TableState.waitingNextHandForContinueLeader;
+    }
+    if (mode == "previousLeader") {
+      state = TableState.waitingNextHandForPreviousLeader;
+    }
     _updateTableListener();
   }
 
-  handleRefuseRequestedScore({required String peerId}) {
-    _checkState(peerId);
+  handleAcceptNextHand({required String peerId}) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.waitingNextHandForNextLeader,
+      TableState.waitingNextHandForContinueLeader,
+      TableState.waitingNextHandForPreviousLeader
+    ]);
+
     final data = playerData(peerId)!;
-    data.requestingScoreFrom.clear();
+    data.acceptedNextHand = true;
+
+    var waitingNextHandCount = 0;
+    for (final v in playerDataMap.values) {
+      waitingNextHandCount += v.acceptedNextHand ? 1 : 0;
+    }
+    if (waitingNextHandCount == 4) {
+      if (state == TableState.waitingNextHandForNextLeader) {
+        nextLeader();
+      }
+      if (state == TableState.waitingNextHandForContinueLeader) {
+        continueLeader();
+      }
+      if (state == TableState.waitingNextHandForPreviousLeader) {
+        previousLeader();
+      }
+    }
+  }
+
+  handleRefuseNextHand({required String peerId}) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.waitingNextHandForNextLeader,
+      TableState.waitingNextHandForContinueLeader,
+      TableState.waitingNextHandForPreviousLeader
+    ]);
+
+    for (final data in playerDataMap.values) {
+      data.acceptedNextHand = false;
+    }
+    state = TableState.processingFinishHand;
     _updateTableListener();
   }
 
-  handleRequestNextHand({required String peerId}) {
-    _checkState(peerId);
-    final data = playerData(peerId)!;
-    data.waitingNextHand = true;
+  handleRequestDrawGame({required String peerId}) {
+    _checkState(peerId,
+        needMyTurn: false, allowTableState: [TableState.drawable]);
+    for (final data in playerDataMap.values) {
+      data.acceptedDrawGame = false;
+    }
+    state = TableState.waitingDrawGame;
     _updateTableListener();
+  }
 
-    // 全員が次局待機状態であれば次局を開始する。
+  handleAcceptDrawGame({required String peerId}) {
+    _checkState(peerId,
+        needMyTurn: false, allowTableState: [TableState.waitingDrawGame]);
+
+    final data = playerData(peerId)!;
+    data.acceptedDrawGame = true;
+
     var waitingPlayerCount = 0;
     for (final v in playerDataMap.values) {
-      waitingPlayerCount += v.waitingNextHand ? 1 : 0;
+      waitingPlayerCount += v.acceptedDrawGame ? 1 : 0;
     }
-    if (waitingPlayerCount == 4) {
-      Future.delayed(const Duration(seconds: 1)).then((value) => nextHand());
+    if (waitingPlayerCount == 4) _onDrawGame();
+  }
+
+  handleRefuseDrawGame({required String peerId}) {
+    _checkState(peerId,
+        needMyTurn: false, allowTableState: [TableState.waitingDrawGame]);
+    for (final data in playerDataMap.values) {
+      data.acceptedDrawGame = false;
     }
+    state = TableState.drawable;
+    _updateTableListener();
+  }
+
+  handleSetLeaderContinuousCount({required String peerId, required int count}) {
+    setLeaderContinuousCount(count);
   }
 }
