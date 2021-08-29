@@ -134,6 +134,7 @@ class Game {
       "handleRequestNextHand": table.handleRequestNextHand,
       "handleAcceptNextHand": table.handleAcceptNextHand,
       "handleRefuseNextHand": table.handleRefuseNextHand,
+      "handleSetLeaderContinuousCount": table.handleSetLeaderContinuousCount,
     };
   }
 
@@ -324,6 +325,12 @@ class Game {
 
   Future<void> refuseNextHand() async {
     _handleCommandResult(await _handleCmd("handleRefuseNextHand", myPeerId));
+  }
+
+  Future<void> setLeaderContinuousCount(int count) async {
+    _handleCommandResult(await _handleCmd(
+        "handleSetLeaderContinuousCount", myPeerId,
+        args: {"count": count}));
   }
 
   void _skyWayOnOpen() {

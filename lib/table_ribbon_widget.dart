@@ -3,6 +3,7 @@ import 'package:web_app_sample/trading_score_widget.dart';
 import 'dart:ui' as ui;
 
 import 'game_controller.dart' as game;
+import 'leader_continuous_count_dialog.dart';
 import 'next_hand_dialog.dart';
 import 'table_controller.dart' as tbl;
 
@@ -210,11 +211,16 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           value: "startTradingScore",
           child: Text('点棒支払'),
         ),
+        const PopupMenuItem<String>(
+          value: "changeLeaderContinuousCount",
+          child: Text('場数変更'),
+        ),
         PopupMenuItem<String>(
           value: "drawGame",
           child: Text('流局'),
           enabled: enabledDrawGame,
         ),
+
       ],
     );
   }
@@ -223,6 +229,9 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     if (menu == "openMyWall") g().openMyWall();
     if (menu == "startTradingScore") {
       showTradingScoreRequestDialog(context, g());
+    }
+    if (menu == "changeLeaderContinuousCount") {
+      showChangeLeaderContinuousCountDialog(context, g());
     }
     if (menu == "drawGame") g().requestDrawGame();
   }
