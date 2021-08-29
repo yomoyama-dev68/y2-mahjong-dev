@@ -72,6 +72,7 @@ class PlayerData {
 
     data.acceptedDrawGame = map["acceptedDrawGame"] as bool;
     data.acceptedNextHand = map["acceptedNextHand"] as bool;
+    data.acceptedGameReset = map["acceptedGameReset"] as bool;
     data.score = map["score"] as int;
     data.openTiles = map["openTiles"];
     data.tiles.addAll(_toListInt(map["tiles"]));
@@ -89,6 +90,7 @@ class PlayerData {
   final requestingScoreFrom = <String, int>{};
   bool acceptedDrawGame = false;
   bool acceptedNextHand = false;
+  bool acceptedGameReset = false;
   int score = 25000;
   bool openTiles = false;
 
@@ -111,6 +113,7 @@ class PlayerData {
     requestingScoreFrom.clear();
     acceptedDrawGame = false;
     acceptedNextHand = false;
+    acceptedGameReset = false;
   }
 
   Map<String, dynamic> toMap() {
@@ -120,6 +123,7 @@ class PlayerData {
     map["requestingScoreFrom"] = requestingScoreFrom;
     map["acceptedDrawGame"] = acceptedDrawGame;
     map["acceptedNextHand"] = acceptedNextHand;
+    map["acceptedGameReset"] = acceptedGameReset;
     map["openTiles"] = openTiles;
     map["drawnTile"] = drawnTile;
     map["tiles"] = tiles;
@@ -127,7 +131,6 @@ class PlayerData {
     map["calledTiles"] = calledTiles.map((v) => v.toMap()).toList();
     map["calledTilesByOther"] = calledTilesByOther;
     map["riichiTile"] = riichiTile;
-
     return map;
   }
 }
@@ -174,6 +177,7 @@ class TableState {
       "waitingNextHandForPreviousLeader";
   static const waitingNextHandForContinueLeader =
       "waitingNextHandForContinueLeader";
+  static const waitingGameReset = "waitingGameReset";
 }
 
 class TableData {
@@ -261,8 +265,13 @@ class Table extends TableData {
   final Function() _updateTableListener;
 
   void startGame(Map<String, String> member) {
+    leaderChangeCount = -1; // 局数: 0~3:東場, 4~7:南場,
+    leaderContinuousCount = 0; // 場数（親継続数）
+    remainRiichiBarCounts = 0; // リーチ供託棒数
+    playerDataMap.clear();
+
     // メンバーの順番を乱数でシャッフルする。
-    final shuffled = <String, String>{};
+    final shuffled = <String, String>{}; // <Peer ID, Player Name>
     for (final id in member.keys.toList()..shuffle()) {
       shuffled[id] = member[id]!;
     }
@@ -655,8 +664,8 @@ class Table extends TableData {
     _checkState(peerId);
     final data1 = playerData(peerId)!;
     final data2 = playerData(requester)!;
-    data1.score -= score;
-    data2.score += score;
+    data1.score += score;
+    data2.score -= score;
     _updateTableListener();
   }
 
@@ -751,6 +760,47 @@ class Table extends TableData {
       data.acceptedDrawGame = false;
     }
     state = TableState.drawable;
+    _updateTableListener();
+  }
+
+  handleRequestGameReset({required String peerId}) {
+    _checkState(peerId,
+        needMyTurn: false, allowTableState: [TableState.processingFinishHand]);
+    for (final data in playerDataMap.values) {
+      data.acceptedGameReset = false;
+    }
+    state = TableState.waitingGameReset;
+    _updateTableListener();
+  }
+
+  handleAcceptGameReset({required String peerId}) {
+    _checkState(peerId,
+        needMyTurn: false, allowTableState: [TableState.waitingGameReset]);
+
+    print("handleAcceptGameReset ${peerId}");
+    final data = playerData(peerId)!;
+    data.acceptedGameReset = true;
+
+    var waitingPlayerCount = 0;
+    for (final v in playerDataMap.values) {
+      waitingPlayerCount += v.acceptedGameReset ? 1 : 0;
+    }
+    print("handleAcceptGameReset: waitingPlayerCount=${waitingPlayerCount}");
+    if (waitingPlayerCount == 4) {
+      final member = playerDataMap.map((key, value) => MapEntry(key, value.name));
+      print("handleAcceptGameReset: member=${member}");
+      startGame(member);
+      nextLeader();
+    }
+  }
+
+  handleRefuseGameReset({required String peerId}) {
+    _checkState(peerId,
+        needMyTurn: false, allowTableState: [TableState.waitingGameReset]);
+    for (final data in playerDataMap.values) {
+      data.acceptedGameReset = false;
+    }
+    state = TableState.processingFinishHand;
     _updateTableListener();
   }
 

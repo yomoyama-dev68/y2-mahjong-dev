@@ -194,7 +194,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       _buildButtonForCallCmd("次局へ", () {
         showRequestNextHandDialog(context, g());
       }),
-      _buildButtonForCallCmd("ゲームリセット", g().requestNextHand),
+      _buildButtonForCallCmd("ゲームリセット", g().requestGameReset),
     ];
   }
 

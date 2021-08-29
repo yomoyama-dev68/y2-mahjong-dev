@@ -74,7 +74,7 @@ class Game {
   final Function onChangeGameTableData;
   final Function(CommandResult) onReceiveCommandResult;
 
-  final member = <String, String>{};
+  final member = <String, String>{};  // <Peer ID, Player Name>
   late String myPeerId;
   late Table table;
   late Map<String, dynamic> oldTableData;
@@ -134,6 +134,9 @@ class Game {
       "handleRequestNextHand": table.handleRequestNextHand,
       "handleAcceptNextHand": table.handleAcceptNextHand,
       "handleRefuseNextHand": table.handleRefuseNextHand,
+      "handleRequestGameReset": table.handleRequestGameReset,
+      "handleAcceptGameReset": table.handleAcceptGameReset,
+      "handleRefuseGameReset": table.handleRefuseGameReset,
       "handleSetLeaderContinuousCount": table.handleSetLeaderContinuousCount,
     };
   }
@@ -325,6 +328,18 @@ class Game {
 
   Future<void> refuseNextHand() async {
     _handleCommandResult(await _handleCmd("handleRefuseNextHand", myPeerId));
+  }
+
+  Future<void> requestGameReset() async {
+    _handleCommandResult(await _handleCmd("handleRequestGameReset", myPeerId));
+  }
+
+  Future<void> acceptGameReset() async {
+    _handleCommandResult(await _handleCmd("handleAcceptGameReset", myPeerId));
+  }
+
+  Future<void> refuseGameReset() async {
+    _handleCommandResult(await _handleCmd("handleRefuseGameReset", myPeerId));
   }
 
   Future<void> setLeaderContinuousCount(int count) async {

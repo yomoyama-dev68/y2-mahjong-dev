@@ -73,6 +73,9 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     if (newState == tbl.TableState.waitingDrawGame) {
       showAcceptDrawGameDialog(context, _game);
     }
+    if (newState == tbl.TableState.waitingGameReset) {
+      showAcceptGameResetDialog(context, _game);
+    }
   }
 
   void onChangeGameTableData() {

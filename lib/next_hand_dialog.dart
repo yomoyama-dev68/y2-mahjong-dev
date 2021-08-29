@@ -110,3 +110,29 @@ void showAcceptDrawGameDialog(BuildContext context, game.Game gameData) {
         );
       });
 }
+
+void showAcceptGameResetDialog(BuildContext context, game.Game gameData) {
+  showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("ゲームを最初から始めます。"),
+          actions: <Widget>[
+            SimpleDialogOption(
+              child: Text('拒否'),
+              onPressed: () {
+                Navigator.pop(context);
+                gameData.refuseGameReset();
+              },
+            ),
+            SimpleDialogOption(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.pop(context);
+                gameData.acceptGameReset();
+              },
+            ),
+          ],
+        );
+      });
+}
