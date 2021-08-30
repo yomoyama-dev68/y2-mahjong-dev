@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'table_controller.dart' as tbl;
 
 class StageInfoWidget extends StatelessWidget {
-  const StageInfoWidget({
-    Key? key,
-    required this.table,
-  }) : super(key: key);
+  const StageInfoWidget({Key? key, required this.table, required this.imageMap})
+      : super(key: key);
 
   static const windTextStyle = TextStyle(
     color: Colors.white,
@@ -22,6 +20,7 @@ class StageInfoWidget extends StatelessWidget {
   );
 
   final tbl.Table table;
+  final Map<String, Image> imageMap;
 
   @override
   Widget build(BuildContext context) {
@@ -75,13 +74,12 @@ class StageInfoWidget extends StatelessWidget {
                       ),
                       Column(mainAxisSize: MainAxisSize.min, children: [
                         Row(mainAxisSize: MainAxisSize.min, children: [
-                          Image.asset(
-                              'assets/images/ms_all/leader_continuos_count_mini.png'),
+                          imageMap["bar_leader_continuous_count_mini"]!,
                           Text("×${leaderContinuousCount}",
                               style: contentTextStyle),
                         ]),
                         Row(mainAxisSize: MainAxisSize.min, children: [
-                          Image.asset('assets/images/ms_all/riichi_bar_mini.png'),
+                          imageMap["bar_riichi_mini"]!,
                           Text(
                             "x${riichiCount}",
                             style: contentTextStyle,

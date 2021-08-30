@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:web_app_sample/player_state_tile.dart';
 import 'package:web_app_sample/stage_info_widget.dart';
+import 'package:web_app_sample/image_loader.dart';
 import 'package:web_app_sample/trading_score_widget.dart';
 import 'dart:ui' as ui;
 
@@ -36,7 +37,9 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   void initState() {
     print("_GameTableWidgetState:initState");
     super.initState();
-    final _tileImages = TileImages(onTileImageLoaded);
+    // final _tileImages = TileImages(onTileImageLoaded);
+    loadImages(0.8)
+        .then((value) => onTileImageLoaded(value.uiImageMap, value.imageMap));
     _game = game.Game(
         roomId: widget.roomId,
         onChangeGameState: onChangeGameState,
@@ -160,7 +163,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         stacks.add(widget);
       }
       stacks.add(Transform.translate(
-          offset: Offset(0, 40), child: StageInfoWidget(table: _game.table)));
+          offset: Offset(0, 40),
+          child: StageInfoWidget(
+            table: _game.table,
+            imageMap: _imageMap,
+          )));
     }
 
     final widgets = <Widget>[];
@@ -170,7 +177,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     ));
     const widgetH = (49 * 2 - 16.0) / 0.8;
     late Widget tilesWidget;
-    print("buildBody: _game.myTurnTempState.onCalledFor= ${_game.myTurnTempState.onCalledFor}");
+    print(
+        "buildBody: _game.myTurnTempState.onCalledFor= ${_game.myTurnTempState.onCalledFor}");
 
     if (_game.myTurnTempState.onCalledFor == "lateKanStep2") {
       tilesWidget = MyCalledTilesWidget(

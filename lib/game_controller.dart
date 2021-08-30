@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:web_app_sample/image_loader.dart';
+
 import 'table_controller.dart';
 import 'skyway_wrapper.dart' as wrapper;
 import 'commad_handler.dart';

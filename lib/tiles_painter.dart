@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'table_controller.dart' as tbl;
 import 'dart:ui' as ui;
 import 'dart:math' as math;
-
+/*
 class TileImages {
   TileImages(this._onLoaded) {
     _loadTiles("manzu_all/p_ms", 0, 9);
@@ -91,6 +91,7 @@ class TileImages {
     }
   }
 }
+*/
 
 class DrawObject {
   DrawObject(this.image, this.pos, this.isCalled);
