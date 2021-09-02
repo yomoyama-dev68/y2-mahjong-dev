@@ -96,15 +96,15 @@ class Game {
     return member[myPeerId] ?? "";
   }
 
-  void setMyName(String name) {
+  void setMyName(String name) async {
     print("setMyName: ${myPeerId}, ${name}");
     _setState(GameState.onWaitingOtherPlayersForStart);
-    _onUpdateMemberMap(myPeerId, name);
     final tmp = <String, dynamic>{
       "type": "notifyMyName",
       "name": name,
     };
     skyWay.sendData(jsonEncode(tmp));
+    _onUpdateMemberMap(myPeerId, name);
   }
 
   bool canCommand() {
@@ -357,6 +357,11 @@ class Game {
 
   void _skyWayOnPeerJoin(String peerId) {
     print("_skyWayOnPeerJoin: $peerId");
+    final tmp = <String, dynamic>{
+      "type": "notifyMember",
+      "member": member,
+    };
+    skyWay.sendData(jsonEncode(tmp));
   }
 
   void _skyWayOnStreamCallback() {
@@ -384,6 +389,12 @@ class Game {
     if (dataType == "notifyMyName") {
       final name = data["name"] as String;
       _onUpdateMemberMap(senderPeerId, name);
+    }
+
+    if (dataType == "notifyMember") {
+      final tmp = data["member"] as Map<String, dynamic>;
+      final tmp2 = tmp.map((key, value) => MapEntry(key, value as String));
+      member.addAll(tmp2);
     }
 
     if (dataType == "requestScore") {

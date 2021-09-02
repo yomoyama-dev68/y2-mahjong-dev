@@ -15,6 +15,10 @@ import 'tiles_painter.dart';
 import 'table_ribbon_widget.dart';
 import 'mywall_widget.dart';
 import 'dart:math';
+import 'dart:html';
+
+const baseTableSize = 700;
+const tappableTileScale = 0.8;
 
 class GameTableWidget extends StatefulWidget {
   const GameTableWidget({Key? key, required this.roomId, this.playerName})
@@ -37,8 +41,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   void initState() {
     print("_GameTableWidgetState:initState");
     super.initState();
-    // final _tileImages = TileImages(onTileImageLoaded);
-    loadImages(0.8)
+    loadImages(tappableTileScale)
         .then((value) => onTileImageLoaded(value.uiImageMap, value.imageMap));
     _game = game.Game(
         roomId: widget.roomId,
@@ -52,6 +55,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   }
 
   void onChangeGameState(game.GameState oldState, game.GameState newState) {
+    print("onChangeGameState: ${_game.myPeerId}: $oldState, $newState");
     if (newState == game.GameState.onSettingMyName) {
       _setMyName();
     }
@@ -82,6 +86,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   }
 
   void onChangeGameTableData() {
+    print("onChangeGameTableData");
     setState(() {});
   }
 
@@ -128,21 +133,30 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     if (_game.state == game.GameState.onWaitingOtherPlayersForStart) {
       return buildWaitingView("Waiting other players.");
     }
-
-    return buildBody();
+    if (_game.table.playerDataMap.length != 4) {
+      return buildWaitingView("Waiting data creation.");
+    }
+    if (window.innerWidth == null) {
+      return buildWaitingView("Waiting data creation.");
+    } else {
+      final width = window.innerWidth!;
+      final scale = width > baseTableSize ? 1.0 : width / baseTableSize;
+      return buildBody(scale);
+    }
   }
 
   Widget buildWaitingView(String message) {
-    return Column(children: [Text(message), const CircularProgressIndicator()]);
+    final widgets = <Widget>[Text(message), const CircularProgressIndicator()];
+    for (final i in _game.member.entries) {
+      widgets.add(Text("${i.key} - ${i.value}"));
+    }
+    return Column(children: widgets);
   }
 
-  Widget buildBody() {
-    const scalse = 1.0;
-    const tableSize = 700.0 * scalse;
-    const inputFormSize = tableSize > 360.0 ? 350.0 : (tableSize - 10);
+  Widget buildBody(double scale) {
+    final tableSize = baseTableSize * scale;
 
     final stacks = <Widget>[];
-
     stacks.add(GestureDetector(
         onTap: () {
           setState(() {
@@ -159,11 +173,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         )));
 
     if (showStageAndPlayerInfo) {
-      for (final widget in buildPlayerStateTiles(tableSize, scalse)) {
+      for (final widget in buildPlayerStateTiles(tableSize, scale)) {
         stacks.add(widget);
       }
       stacks.add(Transform.translate(
-          offset: Offset(0, 40),
+          offset: const Offset(0, 40),
           child: StageInfoWidget(
             table: _game.table,
             imageMap: _imageMap,
@@ -175,10 +189,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       children: stacks,
       alignment: Alignment.center,
     ));
-    const widgetH = (49 * 2 - 16.0) / 0.8;
+    const widgetH = (49 * 2 - 16.0) / tappableTileScale;
     late Widget tilesWidget;
-    print(
-        "buildBody: _game.myTurnTempState.onCalledFor= ${_game.myTurnTempState.onCalledFor}");
 
     if (_game.myTurnTempState.onCalledFor == "lateKanStep2") {
       tilesWidget = MyCalledTilesWidget(

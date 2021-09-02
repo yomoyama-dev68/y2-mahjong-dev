@@ -51,7 +51,9 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
 
     if (tblState == tbl.TableState.notSetup ||
         tblState == tbl.TableState.doingSetupHand) {
-      return const Text("セットアップなう");
+      return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: _buildInSetup());
     }
 
     if (tblState == tbl.TableState.processingFinishHand) {
@@ -81,6 +83,15 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
             : null);
   }
 
+  List<Widget> _buildInSetup() {
+    return [
+      _buildButtonForCallCmd("ツモる", null),
+      _buildButtonForCallCmd("鳴く", null),
+      _buildButtonForCallCmd("ロン", null),
+      _buildPopupMenu()
+    ];
+  }
+
   List<Widget> _buildForMyTurn() {
     if (g().myTurnTempState.onCalledRiichi) {
       return [
@@ -92,24 +103,28 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelTsumo),
         _buildButtonForCallCmd("Ok", g().win),
+        _buildPopupMenu()
       ];
     }
     if (g().myTurnTempState.onCalledRon) {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelCall),
         _buildButtonForCallCmd("Ok", g().win),
+        _buildPopupMenu()
       ];
     }
     if (g().myTurnTempState.onCalledFor == "lateKanStep2") {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelCall),
         _buildButtonForCallCmd("OK", g().setSelectedTiles),
+        _buildPopupMenu()
       ];
     }
     if (g().selectableTilesQuantity() > 0) {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelCall),
         _buildButtonForCallCmd("OK", g().setSelectedTiles),
+        _buildPopupMenu()
       ];
     }
 
@@ -120,8 +135,8 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         _buildButtonForCallCmd("ポン", g().pong),
         _buildButtonForCallCmd("チー", g().chow),
         _buildButtonForCallCmd("カン", g().openKan),
-       _buildPopupMenu()
-    ];
+        _buildPopupMenu()
+      ];
     }
 
     if (tblState == tbl.TableState.drawable) {
@@ -195,6 +210,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         showRequestNextHandDialog(context, g());
       }),
       _buildButtonForCallCmd("ゲームリセット", g().requestGameReset),
+      _buildPopupMenu()
     ];
   }
 
@@ -217,10 +233,9 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         ),
         PopupMenuItem<String>(
           value: "drawGame",
-          child: Text('流局'),
+          child: const Text('流局'),
           enabled: enabledDrawGame,
         ),
-
       ],
     );
   }
