@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:web_app_sample/player_state_tile.dart';
+import 'package:web_app_sample/sound_loader.dart';
 import 'package:web_app_sample/stage_info_widget.dart';
 import 'package:web_app_sample/image_loader.dart';
 import 'package:web_app_sample/trading_score_widget.dart';
@@ -87,10 +88,36 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     if (newState == tbl.TableState.waitingGameReset) {
       showAcceptGameResetDialog(context, _game);
     }
+
+    const waitToDiscards = [
+      tbl.TableState.waitToDiscard,
+      tbl.TableState.waitToDiscardForPongOrChow,
+      tbl.TableState.waitToDiscardForOpenOrLateKan
+    ];
+
+    if (_game.isOwner()) {
+      if (waitToDiscards.contains(oldState) &&
+          newState == tbl.TableState.drawable) {
+        Sounds.discardTile();
+      }
+      if (oldState == tbl.TableState.drawable &&
+          waitToDiscards.contains(newState)) {
+        Sounds.drawTile();
+      }
+      if (oldState == tbl.TableState.doingSetupHand &&
+          newState == tbl.TableState.drawable) {
+        Sounds.sortTiles();
+      }
+    }
   }
 
   void onChangeGameTableData() {
     print("onChangeGameTableData");
+    if (_game.isOwner()) {
+      if (_game.table.state == tbl.TableState.doingSetupHand) {
+        Sounds.drawTile();
+      }
+    }
     setState(() {});
   }
 

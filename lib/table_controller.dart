@@ -160,7 +160,7 @@ class RefuseException implements Exception {
 class TableState {
   static const notSetup = "notSetup";
   static const doingSetupHand = "doingSetupHand";
-  static const doneSetupHand = "doneSetupHand";
+  // static const doneSetupHand = "doneSetupHand";
 
   static const drawable = "drawable";
   static const waitToDiscard = "waitToDiscard";

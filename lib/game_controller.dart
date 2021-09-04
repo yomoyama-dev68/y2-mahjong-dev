@@ -1,9 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:web_app_sample/image_loader.dart';
-import 'package:web_app_sample/sound_loader.dart';
-
 import 'table_controller.dart';
 import 'skyway_wrapper.dart' as wrapper;
 import 'commad_handler.dart';
@@ -173,7 +170,7 @@ class Game {
     // Ownerプレーヤーから直接呼ばれた場合は、公平さのため通信時間を考慮した待機時間を入れる。
     if (!viaNet) await Future.delayed(const Duration(microseconds: 50));
 
-    if (_isOwner()) {
+    if (isOwner()) {
       final Function f = commandMap()[commandName]!;
       final namedArguments = <Symbol, dynamic>{const Symbol("peerId"): peerId};
       namedArguments
@@ -201,7 +198,6 @@ class Game {
   }
 
   Future<void> discardTile(int tile) async {
-    Sounds.discardTile();
     if (myTurnTempState.onCalledRiichi) {
       _handleCommandResult(await _handleCmd(
           "handleDiscardTileWithRiichi", myPeerId,
@@ -436,7 +432,7 @@ class Game {
       final name = data["name"] as String;
       final oldPeerId = data["oldPeerId"] as String;
       final newPeerId = data["newPeerId"] as String;
-      if (_isOwner()) {
+      if (isOwner()) {
         table.handleReplacePeerId(peerId: newPeerId, oldPeerId: oldPeerId);
       }
       lostPlayerNames.remove(name)!;
@@ -493,7 +489,7 @@ class Game {
   }
 
   void _skyWayOnReceiveCommand(Map<String, dynamic> data) {
-    if (!_isOwner()) return; // コマンドの処理はオーナのみが行う。
+    if (!isOwner()) return; // コマンドの処理はオーナのみが行う。
 
     final commander = data["commander"] as String;
     final commandName = data["commandName"] as String;
@@ -520,7 +516,7 @@ class Game {
     if (member.length == 4) {
       if (state == GameState.onWaitingOtherPlayersForStart) {
         _setState(GameState.onGame);
-        if (_isOwner()) {
+        if (isOwner()) {
           print("_onUpdateMemberMap: ${myName()} _isOwner. startGame");
           _startGame();
         }
@@ -528,7 +524,7 @@ class Game {
     }
   }
 
-  bool _isOwner() {
+  bool isOwner() {
     // ピアIDの並び順でゲームオーナーを決定する。
     final peers = member.keys.toList();
     peers.sort();

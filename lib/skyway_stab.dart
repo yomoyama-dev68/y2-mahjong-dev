@@ -81,7 +81,8 @@ class TcpClient {
     _onDataCallback = onDataCallback;
     _onPeerLeaveCallback = onPeerLeaveCallback;
 
-    _channel = WebSocketChannel.connect(Uri.parse('ws://localhost:9999'));
+    // _channel = WebSocketChannel.connect(Uri.parse('ws://localhost:9999'));
+    _channel = WebSocketChannel.connect(Uri.parse('ws://192.168.0.2:9999'));
     _channel?.stream.listen((message) {
       _onData(message);
     });
