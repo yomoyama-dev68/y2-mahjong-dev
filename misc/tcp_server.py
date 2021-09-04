@@ -2,10 +2,9 @@ from websocket_server import WebsocketServer
 import logging
 import json
 
-
 def handleJoinRoom(server, client, peerId: str):
     print("handleJoinRoom:", peerId)
-
+    server.id_map[client['id']] =peerId
     rdata = {'cmd': 'onPeerJoinCallback',
              'peerId': peerId}
     rdata = json.dumps(rdata)
@@ -30,11 +29,21 @@ def handleData(server, client, data):
         handleSendData(server, client, data['peerId'], data['data'])
 
 
+def handlePeerLeave(server, client):
+    peerId = server.id_map.pop(client['id'])
+    print(f'handlePeerLeave: {peerId}')
+    rdata = {'cmd': 'onPeerLeaveCallback',
+             'peerId': peerId,}
+    rdata = json.dumps(rdata)
+    server.send_message(rdata, client)
+
+
 class Websocket_Server():
 
     def __init__(self, host, port):
         self.server = WebsocketServer(port, host=host, loglevel=logging.DEBUG)
         self.clients = []
+        self.id_map = {}
 
     # クライアント接続時に呼ばれる関数
     def new_client(self, client, server):
@@ -43,8 +52,9 @@ class Websocket_Server():
 
     # クライアント切断時に呼ばれる関数
     def client_left(self, client, server):
-        print("client({}) disconnected".format(client['id']))
+        print("client({}) disconnected!!".format(client['id']))
         self.clients.remove(client)
+        handlePeerLeave(self, client)
 
     # クライアントからメッセージを受信したときに呼ばれる関数
     def message_received(self, client, server, message):

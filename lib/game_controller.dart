@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:web_app_sample/image_loader.dart';
+import 'package:web_app_sample/sound_loader.dart';
 
 import 'table_controller.dart';
 import 'skyway_wrapper.dart' as wrapper;
@@ -39,15 +40,14 @@ class MyTurnTempState {
 }
 
 class Game {
-  Game(
-      {required this.roomId,
-      required this.onChangeGameState,
-      required this.onChangeMember,
-      required this.onChangeGameTableState,
-      required this.onRequestScore,
-      required this.onEventGameTable,
-      required this.onChangeGameTableData,
-      required this.onReceiveCommandResult}) {
+  Game({required this.roomId,
+    required this.onChangeGameState,
+    required this.onChangeMember,
+    required this.onChangeGameTableState,
+    required this.onRequestScore,
+    required this.onEventGameTable,
+    required this.onChangeGameTableData,
+    required this.onReceiveCommandResult}) {
     table = Table(_tableOnUpdateTable);
     oldTableData = table.toMap();
     skyWay.newPeer(skyWayKey, 3, (peerId) {
@@ -76,7 +76,8 @@ class Game {
   final Function onChangeGameTableData;
   final Function(CommandResult) onReceiveCommandResult;
 
-  final member = <String, String>{};  // <Peer ID, Player Name>
+  final member = <String, String>{}; // <Peer ID, Player Name>
+  final lostPlayerNames = <String, String>{}; // <Player Name, Peer ID>
   late String myPeerId;
   late Table table;
   late Map<String, dynamic> oldTableData;
@@ -105,6 +106,27 @@ class Game {
     };
     skyWay.sendData(jsonEncode(tmp));
     _onUpdateMemberMap(myPeerId, name);
+  }
+
+  void rejoinAs(String name) async {
+    final oldPeerId = lostPlayerNames.remove(name)!;
+    final tmp = <String, dynamic>{
+      "type": "rejoinAs",
+      "name": name,
+      "oldPeerId": oldPeerId,
+      "newPeerId": myPeerId,
+    };
+    skyWay.sendData(jsonEncode(tmp));
+
+    final oldMember = member.values.toList();
+    member[myPeerId] = name;
+    final newMember = member.values.toList();
+    onChangeMember(oldMember, newMember);
+    if (member.length == 4) {
+      _setState(GameState.onGame);
+    } else {
+      _setState(GameState.onWaitingOtherPlayersInGame);
+    }
   }
 
   bool canCommand() {
@@ -140,6 +162,7 @@ class Game {
       "handleAcceptGameReset": table.handleAcceptGameReset,
       "handleRefuseGameReset": table.handleRefuseGameReset,
       "handleSetLeaderContinuousCount": table.handleSetLeaderContinuousCount,
+      "handleReplacePeerId": table.handleReplacePeerId,
     };
   }
 
@@ -178,6 +201,7 @@ class Game {
   }
 
   Future<void> discardTile(int tile) async {
+    Sounds.discardTile();
     if (myTurnTempState.onCalledRiichi) {
       _handleCommandResult(await _handleCmd(
           "handleDiscardTileWithRiichi", myPeerId,
@@ -360,6 +384,7 @@ class Game {
     final tmp = <String, dynamic>{
       "type": "notifyMember",
       "member": member,
+      "lostPlayerNames": lostPlayerNames,
     };
     skyWay.sendData(jsonEncode(tmp));
   }
@@ -374,7 +399,9 @@ class Game {
 
   void _skyWayOnPeerLeave(String peerId) {
     print("_skyWayOnPeerLeave: $peerId");
-    member.remove(peerId);
+    myTurnTempState.clear();
+    final name = member.remove(peerId);
+    lostPlayerNames[name!] = peerId;
     _setState(GameState.onWaitingOtherPlayersInGame);
   }
 
@@ -392,9 +419,34 @@ class Game {
     }
 
     if (dataType == "notifyMember") {
-      final tmp = data["member"] as Map<String, dynamic>;
-      final tmp2 = tmp.map((key, value) => MapEntry(key, value as String));
-      member.addAll(tmp2);
+      member.addAll((data["member"] as Map<String, dynamic>)
+          .map((key, value) => MapEntry(key, value as String)));
+      final lostMember = (data["lostPlayerNames"] as Map<String, dynamic>).map((
+          key,
+          value) => MapEntry(key, value as String));
+      if (lostMember.isNotEmpty && !member.containsKey(myPeerId)) {
+        lostPlayerNames
+          ..clear()
+          ..addAll(lostMember);
+      }
+    }
+
+    if (dataType == "rejoinAs") {
+      assert(state == GameState.onWaitingOtherPlayersInGame);
+      final name = data["name"] as String;
+      final oldPeerId = data["oldPeerId"] as String;
+      final newPeerId = data["newPeerId"] as String;
+      if (_isOwner()) {
+        table.handleReplacePeerId(peerId: newPeerId, oldPeerId: oldPeerId);
+      }
+      lostPlayerNames.remove(name)!;
+      final oldMember = member.values.toList();
+      member[newPeerId] = name;
+      final newMember = member.values.toList();
+      onChangeMember(oldMember, newMember);
+      if (member.length == 4) {
+        _setState(GameState.onGame);
+      }
     }
 
     if (dataType == "requestScore") {
@@ -417,8 +469,8 @@ class Game {
     }
   }
 
-  void _notifyUpdatedTableData(
-      Map<String, dynamic> oldData, Map<String, dynamic> newData) {
+  void _notifyUpdatedTableData(Map<String, dynamic> oldData,
+      Map<String, dynamic> newData) {
     print("_notifyUpdatedTableData: ${myPeerId}");
     if (oldData["state"] != newData["state"]) {
       onChangeGameTableState(oldData["state"], newData["state"]);
@@ -454,6 +506,11 @@ class Game {
 
   // caller:self or skyWay
   void _onUpdateMemberMap(String peerId, String name) {
+    if (member.length == 4) {
+      print("_onUpdateMemberMap: Member is fully.");
+      return;
+    }
+
     final oldMember = member.values.toList();
     member[peerId] = name;
     final newMember = member.values.toList();

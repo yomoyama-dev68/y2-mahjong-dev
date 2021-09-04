@@ -33,7 +33,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: TopWidget(roomId: const Uuid().v4()),
+      home: FirstWidget(roomId: const Uuid().v4()),
     );
   }
 }
@@ -58,7 +58,6 @@ class RouteGenerator {
           return MaterialPageRoute(builder: (_) => TopWidget(roomId: roomId));
         }
     }
-
     return null;
   }
 }

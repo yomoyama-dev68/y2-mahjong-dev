@@ -183,6 +183,7 @@ class TableState {
 class TableData {
   // 荘中関連
   Map<String, PlayerData> playerDataMap = {}; // 親順ソート済み
+  Map<String, String> oldPeerIdMap = {}; // <OldPeerId, NewPeerId>
   int leaderChangeCount = -1; // 局数: 0~3:東場, 4~7:南場,
   int leaderContinuousCount = 0; // 場数（親継続数）
   int remainRiichiBarCounts = 0; // リーチ供託棒数
@@ -202,6 +203,8 @@ class TableData {
     final map = <String, dynamic>{};
     map["playerDataMap"] =
         playerDataMap.map((key, value) => MapEntry(key, value.toMap()));
+    map["oldPeerIdMap"] = oldPeerIdMap;
+
     map["leaderChangeCount"] = leaderChangeCount;
     map["leaderContinuousCount"] = leaderContinuousCount;
 
@@ -221,7 +224,8 @@ class TableData {
   void applyData(Map<String, dynamic> map) {
     playerDataMap = (map["playerDataMap"] as Map<String, dynamic>)
         .map((key, value) => MapEntry(key, PlayerData.fromJsonMap(value)));
-
+    oldPeerIdMap = (map["oldPeerIdMap"] as Map<String, dynamic>)
+        .map((key, value) => MapEntry(key, value as String));
     leaderChangeCount = map["leaderChangeCount"] as int;
     leaderContinuousCount = map["leaderContinuousCount"] as int;
 
@@ -241,8 +245,11 @@ class TableData {
   }
 
   int direction(String from, String to) {
-    final index0 = idList().indexOf(from);
-    int index1 = idList().indexOf(to);
+    final from2 = toCurrentPeerId(from);
+    final to2 = toCurrentPeerId(to);
+    print("direction: from: ${from}->${from2}, to: ${to}->${to2},");
+    final index0 = idList().indexOf(from2);
+    int index1 = idList().indexOf(to2);
     if (index1 < index0) {
       index1 += 4;
     }
@@ -252,6 +259,16 @@ class TableData {
     // -2,  -1,  i0,   1 |  2,   3,  i0,   1
     // -3,  -2,  -1,  i0 |  1,   2,   3,  i0
     return index1 - index0; // 0:自分, 1:右, 2:対面, 3:左
+  }
+
+  String toCurrentPeerId(String oldPeerId) {
+    String currentPeerId = oldPeerId;
+    while (true) {
+      final tmp = oldPeerIdMap[currentPeerId];
+      if (tmp == null) break;
+      currentPeerId = tmp;
+    }
+    return currentPeerId;
   }
 
   PlayerData? playerData(String peerId) {
@@ -305,6 +322,28 @@ class Table extends TableData {
 
   void setLeaderContinuousCount(int count) {
     leaderContinuousCount = count;
+    _updateTableListener();
+  }
+
+  void handleReplacePeerId(
+      {required String peerId, required String oldPeerId}) {
+    oldPeerIdMap[oldPeerId] = peerId;
+
+    // 荘中関連
+    print("handleReplacePeerId: playerDataMap: ${playerDataMap},"
+        "peerId=${peerId}, oldPeerId=${oldPeerId}");
+    final newMap = playerDataMap.map((curPeerId, data) {
+      return MapEntry(curPeerId == oldPeerId ? peerId : curPeerId, data);
+    });
+    playerDataMap
+      ..clear()
+      ..addAll(newMap);
+    print("handleReplacePeerId: playerDataMap: ${playerDataMap}");
+    // 局中関連
+    turnedPeerId = turnedPeerId == oldPeerId ? peerId : turnedPeerId;
+    lastDiscardedPlayerPeerID = lastDiscardedPlayerPeerID == oldPeerId
+        ? peerId
+        : lastDiscardedPlayerPeerID;
     _updateTableListener();
   }
 
@@ -660,7 +699,8 @@ class Table extends TableData {
     _updateTableListener();
   }
 
-  handleAcceptRequestedScore({required String peerId, required String requester, required int score}) {
+  handleAcceptRequestedScore(
+      {required String peerId, required String requester, required int score}) {
     _checkState(peerId);
     final data1 = playerData(peerId)!;
     final data2 = playerData(requester)!;
@@ -787,7 +827,8 @@ class Table extends TableData {
     }
     print("handleAcceptGameReset: waitingPlayerCount=${waitingPlayerCount}");
     if (waitingPlayerCount == 4) {
-      final member = playerDataMap.map((key, value) => MapEntry(key, value.name));
+      final member =
+          playerDataMap.map((key, value) => MapEntry(key, value.name));
       print("handleAcceptGameReset: member=${member}");
       startGame(member);
       nextLeader();

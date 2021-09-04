@@ -57,7 +57,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   void onChangeGameState(game.GameState oldState, game.GameState newState) {
     print("onChangeGameState: ${_game.myPeerId}: $oldState, $newState");
     if (newState == game.GameState.onSettingMyName) {
-      _setMyName();
+      if (_game.lostPlayerNames.isEmpty) {
+        _setMyName();
+      } else {
+        _rejoin();
+      }
     }
     setState(() {});
   }
@@ -116,6 +120,17 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     }
   }
 
+  Future<void> _rejoin() async {
+    while (true) {
+      final name = await RejoinNameSelectDialog.show(
+          context, _game.lostPlayerNames.keys.toList());
+      if (name != null) {
+        _game.rejoinAs(name);
+        return;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_imageMap.isEmpty) {
@@ -132,6 +147,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     }
     if (_game.state == game.GameState.onWaitingOtherPlayersForStart) {
       return buildWaitingView("Waiting other players.");
+    }
+    if (_game.state == game.GameState.onWaitingOtherPlayersInGame) {
+      final subtext = _game.lostPlayerNames.keys.toList().join(" と ");
+      return buildWaitingView("${subtext}の接続が切れました。再接続を待っています。");
     }
     if (_game.table.playerDataMap.length != 4) {
       return buildWaitingView("Waiting data creation.");
@@ -191,6 +210,13 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     ));
     const widgetH = (49 * 2 - 16.0) / tappableTileScale;
     late Widget tilesWidget;
+
+    print("buildBody: _game.state: ${_game.state}");
+    print("buildBody: _game.member: ${_game.member}");
+    print("buildBody: _game.lostPlayerNames: ${_game.lostPlayerNames}");
+    print("buildBody: _game.table.state: ${_game.table.state}");
+    print("buildBody: _game.myPeerId: ${_game.myPeerId}");
+    print("buildBody: _game.table.playerDataMap: ${_game.table.playerDataMap}");
 
     if (_game.myTurnTempState.onCalledFor == "lateKanStep2") {
       tilesWidget = MyCalledTilesWidget(

@@ -52,3 +52,28 @@ class NameSetDialogState extends State<NameSetDialog> {
     super.dispose();
   }
 }
+
+class RejoinNameSelectDialog {
+  static Future<String?> show(
+      BuildContext context, List<String> lostPlayerNames) {
+    final widgets = <Widget>[];
+    for (final name in lostPlayerNames) {
+      widgets.add(SimpleDialogOption(
+        onPressed: () {
+          Navigator.pop(context, name);
+        },
+        child: Text(name),
+      ));
+    }
+
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return SimpleDialog(
+          title: const Text('どのプレイヤーだったか選んでください。'),
+          children: widgets,
+        );
+      },
+    );
+  }
+}

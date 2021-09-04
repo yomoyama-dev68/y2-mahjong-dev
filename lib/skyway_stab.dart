@@ -28,8 +28,8 @@ void joinRoom(
     Function(String) onPeerJoinCallback,
     Function() onStreamCallback,
     Function(String, String) onDataCallback,
-    Function(String) onPeerLeave,
-    Function() onClose) {
+    Function(String) onPeerLeaveCallback,
+    Function() onCloseCallback) {
   Timer(_rduration(1, 1), () => onOpenCallback());
 
   /*
@@ -40,10 +40,11 @@ void joinRoom(
   onDataCallbackMap[peerId] = onDataCallback;
    */
   tcpClientMap[peerId] = TcpClient();
-  tcpClientMap[peerId]!.joinRoom(peerId, onPeerJoinCallback, onDataCallback);
+  tcpClientMap[peerId]!.joinRoom(
+      peerId, onPeerJoinCallback, onDataCallback, onPeerLeaveCallback);
 
-  onPeerLeaveMap[peerId] = onPeerLeave;
-  onCloseMap[peerId] = onClose;
+  onPeerLeaveMap[peerId] = onPeerLeaveCallback;
+  onCloseMap[peerId] = onCloseCallback;
 }
 
 void sendData(String peerId, String data) {
@@ -53,7 +54,6 @@ void sendData(String peerId, String data) {
   }
    */
   tcpClientMap[peerId]!.sendData(peerId, data);
-
 }
 
 void leaveRoom(String peerId) {
@@ -70,11 +70,16 @@ class TcpClient {
   WebSocketChannel? _channel;
   Function(String)? _onPeerJoinCallback;
   Function(String, String)? _onDataCallback;
+  Function(String)? _onPeerLeaveCallback;
 
-  void joinRoom(String peerId, Function(String) onPeerJoinCallback,
-      Function(String, String) onDataCallback) {
+  void joinRoom(
+      String peerId,
+      Function(String) onPeerJoinCallback,
+      Function(String, String) onDataCallback,
+      Function(String)? onPeerLeaveCallback) {
     _onPeerJoinCallback = onPeerJoinCallback;
     _onDataCallback = onDataCallback;
+    _onPeerLeaveCallback = onPeerLeaveCallback;
 
     _channel = WebSocketChannel.connect(Uri.parse('ws://localhost:9999'));
     _channel?.stream.listen((message) {
@@ -106,6 +111,9 @@ class TcpClient {
     if (cmd == 'onDataCallback') {
       final data = dataMap['data'] as String;
       _onDataCallback!(data, dataMap['peerId']);
+    }
+    if (cmd == 'onPeerLeaveCallback') {
+      _onPeerLeaveCallback!(dataMap['peerId']);
     }
   }
 
