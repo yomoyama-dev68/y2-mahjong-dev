@@ -5,8 +5,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
-
+import 'dart:io';
 import 'package:flutter/services.dart';
+import 'dart:html' as html;
+import 'dart:convert' show json, utf8;
 
 class Images {
   final imageMap = <String, Image>{};
@@ -20,6 +22,27 @@ Future<Images> loadImages(double scaleForImage) {
 }
 
 /*
+Future<Images> loadImages(double scaleForImage) async {
+  final zipData = await rootBundle.load("images.zip");
+  final archive = ZipDecoder().decodeBytes(zipData.buffer.asUint8List());
+
+  final images = Images();
+  final file = archive.first;
+  print("${file.name} E");
+  final name = file.name
+      .split("/")
+      .last
+      .split(".")
+      .first;
+  final data = file.content as Uint8List;
+  ui.Codec codec = await ui.instantiateImageCodec(data);
+  ui.FrameInfo info = await codec.getNextFrame();
+  images.imageMap[name] = Image.memory(data, scale: scaleForImage);
+  images.uiImageMap[name] = info.image;
+  print("${file.name} X");
+  return images;
+}*/
+
 void _loadImages(Completer<Images> completer, double scaleForImage) async {
   final data = await rootBundle.load("assets/images.zip");
   final archive = ZipDecoder().decodeBytes(data.buffer.asUint8List());
@@ -27,8 +50,12 @@ void _loadImages(Completer<Images> completer, double scaleForImage) async {
   final images = Images();
   var count = 0;
   for (final file in archive) {
-    final name = file.name.split("/").last.split(".").first;
-    final data = file.content as Uint8List;
+    final name = file.name
+        .split("/")
+        .last
+        .split(".")
+        .first;
+    final data = (file.content as Uint8List).sublist(0);
     ui.decodeImageFromList(data, (ui.Image uiImg) {
       count++;
       images.imageMap[name] = Image.memory(data, scale: scaleForImage);
@@ -39,9 +66,8 @@ void _loadImages(Completer<Images> completer, double scaleForImage) async {
     });
   }
 }
-*/
 
-void _loadImages(Completer<Images> completer, double scaleForImage) async {
+void _loadImages3(Completer<Images> completer, double scaleForImage) async {
   final fileList = [
     "0_0_0.gif",
     "0_0_1.gif",
@@ -248,8 +274,11 @@ void _loadImages(Completer<Images> completer, double scaleForImage) async {
     rootBundle.load("assets/images/${fileName}").then((ByteData data) {
       ui.decodeImageFromList(data.buffer.asUint8List(), (ui.Image uiImg) {
         count++;
-        final name = fileName.split(".").first;
-        images.imageMap[name] = Image.memory(data.buffer.asUint8List(), scale: scaleForImage);
+        final name = fileName
+            .split(".")
+            .first;
+        images.imageMap[name] =
+            Image.memory(data.buffer.asUint8List(), scale: scaleForImage);
         images.uiImageMap[name] = uiImg;
         if (count == fileList.length) {
           completer.complete(images);
@@ -258,3 +287,32 @@ void _loadImages(Completer<Images> completer, double scaleForImage) async {
     });
   }
 }
+
+/*
+Future<void> _loadImages10(Completer<Images> completer, double scaleForImage) async {
+  final data = await rootBundle.load("assets/images.bin");
+  final infoStringByteEndIndex = data.getInt32(0, Endian.little) + 4;
+  final infoString = String.fromCharCodes(
+      data.buffer.asUint8List(), 4, infoStringByteEndIndex);
+  final infoMap = json.decode(infoString) as Map<String, dynamic>;
+  print(infoMap);
+
+  var count = 0;
+  final images = Images();
+  for (final e in infoMap.entries) {
+    final indexs = e.value as List;
+    final start = (indexs[0] as int) + infoStringByteEndIndex;
+    final end = (indexs[1] as int) + infoStringByteEndIndex;
+//    final dataBuffer = data.buffer.asUint8List().sublist(start, end);
+    final dataBuffer = data.buffer.asUint8List(start, end - start);
+    ui.decodeImageFromList(dataBuffer, (ui.Image uiImg) {
+      images.imageMap[e.key] = Image.memory(dataBuffer, scale: scaleForImage);
+      images.uiImageMap[e.key] = uiImg;
+      count++;
+      if (count == infoMap.length) {
+        completer.complete(images);
+      }
+    });
+  }
+}
+*/
