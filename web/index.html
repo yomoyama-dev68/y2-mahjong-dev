@@ -65,7 +65,9 @@
       });
 
       room.on('peerJoin', peerId => {
+        console.log('index: peerJoin: E');
         onPeerJoinCallback(peerId);
+        console.log('index: peerJoin: X');
       });
 
       room.on('stream', async stream => {
