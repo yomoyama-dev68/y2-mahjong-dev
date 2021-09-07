@@ -45,12 +45,18 @@ class Game {
     required this.onEventGameTable,
     required this.onChangeGameTableData,
     required this.onReceiveCommandResult}) {
+    print("Game:Game():1");
     table = Table(_tableOnUpdateTable);
+    print("Game:Game():2");
     oldTableData = table.toMap();
+    print("Game:Game():3");
     skyWay.newPeer(skyWayKey, 3, (peerId) {
+      print("Game:Game():4: ${peerId}");
       _commandHandler = CommandHandler(skyWay);
+      print("Game:Game():5");
       myPeerId = peerId;
       _setState(GameState.onJoiningRoom);
+      print("Game:Game():6");
       skyWay.joinRoom(
           roomId,
           roomMode,
@@ -60,10 +66,11 @@ class Game {
           _skyWayOnData,
           _skyWayOnPeerLeave,
           _skyWayOnClose);
+      print("Game:Game():7");
     });
   }
 
-  final skyWay = wrapper.SkyWayHelper(useStab: true);
+  final skyWay = wrapper.SkyWayHelper(useStab: false);
   final roomId;
   final Function(GameState, GameState) onChangeGameState;
   final Function(List<String>, List<String>) onChangeMember;
@@ -376,13 +383,15 @@ class Game {
   }
 
   void _skyWayOnPeerJoin(String peerId) {
-    print("_skyWayOnPeerJoin: $peerId");
+    print("_skyWayOnPeerJoin1: $peerId");
     final tmp = <String, dynamic>{
       "type": "notifyMember",
       "member": member,
       "lostPlayerNames": lostPlayerNames,
     };
+    print("_skyWayOnPeerJoin2: $tmp");
     skyWay.sendData(jsonEncode(tmp));
+    print("_skyWayOnPeerJoi3:");
   }
 
   void _skyWayOnStreamCallback() {

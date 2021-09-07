@@ -33,7 +33,6 @@
   <!-- This script installs service_worker.js to provide PWA functionality to
        application. For more information, see:
        https://developers.google.com/web/fundamentals/primers/service-workers -->
-  <!--
   <script src="https://cdn.webrtc.ecl.ntt.com/skyway-4.4.1.js"></script>
   <script>
     let peer;
@@ -41,8 +40,10 @@
     let remoteAudioMap = {};
 
     function newPeer(key, debug, onOpenCallback) {
+      console.log('index: newPeer: E');
       peer = new Peer({key: key, debug: debug});
       peer.once('open', id => onOpenCallback(id));
+      console.log('index: newPeer: X');
       return;
     }
 
@@ -53,6 +54,7 @@
                       onDataCallback,
                       onPeerLeave,
                       onClose) {
+      console.log('index: joinRoom: E');
       room = peer.joinRoom(roomId, {
         mode: mode,
         // stream: localStream,
@@ -75,7 +77,9 @@
       });
 
       room.on('data', ({ data, src }) => {
+        console.log('index: data: E');
         onDataCallback(data, src);
+        console.log('index: data: X');
       });
 
       room.on('peerLeave', peerId => {
@@ -94,17 +98,19 @@
           onClose();
         }
       });
+      console.log('index: joinRoom: X');
     }
 
     function sendData(data) {
+      console.log('index: sendData: E');
       room.send(data);
+      console.log('index: sendData: X');
     }
 
     function leaveRoom() {
       room.close();
     }
   </script>
-  -->
 
   <script>
     var serviceWorkerVersion = null;
