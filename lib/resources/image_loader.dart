@@ -50,7 +50,7 @@ Future<Images> loadImages(double scaleForImage) async {
 
   final images = Images();
   for (final file in archive) {
-    print("${file.name} E");
+    // print("${file.name} E");
     final name = file.name.split("/").last.split(".").first;
 
     // Note:　sublist(0)でデータをクローンしないと、getNextFrameで処理が帰ってこない。
@@ -60,7 +60,7 @@ Future<Images> loadImages(double scaleForImage) async {
     ui.FrameInfo info = await codec.getNextFrame();
     images.imageMap[name] = Image.memory(data, scale: scaleForImage);
     images.uiImageMap[name] = info.image;
-    print("${file.name} X");
+    // print("${file.name} X");
   }
   return images;
 }

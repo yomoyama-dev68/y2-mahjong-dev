@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'table_controller.dart' as tbl;
+import '../table_controller.dart' as tbl;
 import 'dart:ui' as ui;
 import 'dart:math' as math;
 /*

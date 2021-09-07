@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:web_app_sample/trading_score_widget.dart';
+import 'package:web_app_sample/widgets/trading_score_widget.dart';
 import 'dart:ui' as ui;
 
-import 'game_controller.dart' as game;
-import 'leader_continuous_count_dialog.dart';
-import 'next_hand_dialog.dart';
-import 'table_controller.dart' as tbl;
+import '../game_controller.dart' as game;
+import '../dialogs/leader_continuous_count_dialog.dart';
+import '../dialogs/next_hand_dialog.dart';
+import '../table_controller.dart' as tbl;
 
 class TableRibbonWidget extends StatefulWidget {
   const TableRibbonWidget({Key? key, required this.gameData}) : super(key: key);

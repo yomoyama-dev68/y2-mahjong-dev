@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'table_controller.dart' as tbl;
+import '../table_controller.dart' as tbl;
 
 class StageInfoWidget extends StatelessWidget {
   const StageInfoWidget({Key? key, required this.table, required this.imageMap})

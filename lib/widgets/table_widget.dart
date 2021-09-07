@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:web_app_sample/player_state_tile.dart';
-import 'package:web_app_sample/sound_loader.dart';
-import 'package:web_app_sample/stage_info_widget.dart';
-import 'package:web_app_sample/image_loader.dart';
-import 'package:web_app_sample/trading_score_widget.dart';
+import 'package:web_app_sample/widgets/player_state_tile.dart';
+import 'package:web_app_sample/resources/sound_loader.dart';
+import 'package:web_app_sample/widgets/stage_info_widget.dart';
+import 'package:web_app_sample/resources/image_loader.dart';
+import 'package:web_app_sample/widgets/trading_score_widget.dart';
 import 'dart:ui' as ui;
 
 import 'called_tiles_widget.dart';
-import 'commad_handler.dart';
-import 'game_controller.dart' as game;
-import 'name_set_dialog.dart';
-import 'next_hand_dialog.dart';
-import 'table_controller.dart' as tbl;
+import '../commad_handler.dart';
+import '../game_controller.dart' as game;
+import '../dialogs/name_set_dialog.dart';
+import '../dialogs/next_hand_dialog.dart';
+import '../table_controller.dart' as tbl;
 import 'tiles_painter.dart';
 import 'table_ribbon_widget.dart';
 import 'mywall_widget.dart';

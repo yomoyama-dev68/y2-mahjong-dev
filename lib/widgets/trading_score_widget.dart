@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'game_controller.dart' as game;
+import '../game_controller.dart' as game;
 
 void showTradingScoreAcceptDialog(
     BuildContext context, game.Game gameData, String requester, int score) {

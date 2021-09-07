@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'game_controller.dart' as game;
+import '../game_controller.dart' as game;
 
 void showRequestNextHandDialog(BuildContext context, game.Game gameData) {
   showDialog(

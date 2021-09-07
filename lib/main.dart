@@ -1,7 +1,7 @@
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
-import 'package:web_app_sample/first_widget.dart';
-import 'package:web_app_sample/top_widget.dart';
+import 'package:web_app_sample/widgets/first_widget.dart';
+import 'package:web_app_sample/widgets/top_widget.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'dart:html';

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:web_app_sample/tiles_painter.dart';
+import 'package:web_app_sample/widgets/tiles_painter.dart';
 
-import 'game_controller.dart' as game;
-import 'table_controller.dart' as tbl;
+import '../game_controller.dart' as game;
+import '../table_controller.dart' as tbl;
 
 class MyCalledTilesWidget extends StatefulWidget {
   const MyCalledTilesWidget(

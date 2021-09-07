@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'game_controller.dart' as game;
-import 'table_controller.dart' as tbl;
+import '../game_controller.dart' as game;
+import '../table_controller.dart' as tbl;
 
 class MyWallWidget extends StatefulWidget {
   const MyWallWidget({Key? key, required this.gameData, required this.imageMap})
