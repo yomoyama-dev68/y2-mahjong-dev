@@ -100,9 +100,11 @@ class MyWallWidgetState extends State<MyWallWidget> {
     final selectingTiles = g().myTurnTempState.selectingTiles;
     if (selectingTiles.contains(tile)) {
       selectingTiles.remove(tile);
+      g().onChangeSelectingTiles?.call();
     } else {
       if (selectingTiles.length < limit) {
         selectingTiles.add(tile);
+        g().onChangeSelectingTiles?.call();
       }
     }
   }

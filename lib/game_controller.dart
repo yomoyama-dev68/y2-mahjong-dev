@@ -89,6 +89,7 @@ class Game {
   late CommandHandler _commandHandler;
   String lastTurnedPeerId = "";
   final myTurnTempState = MyTurnTempState();
+  Function()? onChangeSelectingTiles;
 
   GameState state = GameState.onCreatingMyPeer;
 
