@@ -7,7 +7,7 @@ import 'commad_handler.dart';
 
 const skyWayKey = '05bd41ee-71ec-4d8b-bd68-f6b7e1172b76';
 const roomMode = "mesh";
-const useStab = false;
+const useStab = true;
 
 enum GameState {
   onCreatingMyPeer,
@@ -78,7 +78,7 @@ class Game {
   final Function(String, String) onChangeGameTableState;
   final Function(String, int) onRequestScore;
   final Function onEventGameTable;
-  final Function onChangeGameTableData;
+  final Function(String) onChangeGameTableData;
   final Function(CommandResult) onReceiveCommandResult;
 
   final member = <String, String>{}; // <Peer ID, Player Name>
@@ -267,7 +267,7 @@ class Game {
     if (calledFor == "lateKanStep1") {
       myTurnTempState.onCalledFor = "lateKanStep2";
       print("calledFor == lateKanStep1");
-      onChangeGameTableData();
+      onChangeGameTableData("lateKanStep2");
     }
 
     if (calledFor == "lateKanStep2") {
@@ -483,12 +483,12 @@ class Game {
     }
 
     if (oldData["turnedPeerId"] != newData["turnedPeerId"]) {
-      if (newData["turnedPeerId"] == myPeerId) {
+      if (newData == myPeerId) {
         onEventGameTable("onMyTurned");
       }
     }
 
-    onChangeGameTableData();
+    onChangeGameTableData(newData["updatedFor"]);
   }
 
   void _skyWayOnUpdateTable(Map<String, dynamic> newTableData) {
@@ -547,8 +547,9 @@ class Game {
   }
 
   // Called from TableController.
-  void _tableOnUpdateTable() {
+  void _tableOnUpdateTable(String updatedFor) {
     final newTableData = table.toMap();
+    newTableData["updatedFor"] = updatedFor;
 
     final tmp = <String, dynamic>{
       "type": "updateTableData",

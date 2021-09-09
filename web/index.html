@@ -85,20 +85,24 @@
       });
 
       room.on('peerLeave', peerId => {
+        console.log('index: peerLeave: E');
         const remoteAudio = remoteAudioMap[stream.peerId];
         remoteAudio.srcObject.getTracks().forEach(track => track.stop());
         remoteAudio.srcObject = null;
         onPeerLeave(peerId);
+        console.log('index: peerLeave: X');
       });
 
       // for closing(leaving) myself
       room.once('close', () => {
+        console.log('index: close: E');
         for (let key in remoteAudioMap) {
           const remoteAudio = remoteAudioMap[key];
           remoteAudio.srcObject.getTracks().forEach(track => track.stop());
           remoteAudio.srcObject = null;
           onClose();
         }
+        console.log('index: close: X');
       });
       console.log('index: joinRoom: X');
     }

@@ -279,7 +279,7 @@ class TableData {
 class Table extends TableData {
   Table(this._updateTableListener);
 
-  final Function() _updateTableListener;
+  final Function(String) _updateTableListener;
 
   void startGame(Map<String, String> member) {
     leaderChangeCount = -1; // 局数: 0~3:東場, 4~7:南場,
@@ -303,26 +303,26 @@ class Table extends TableData {
     assert(playerDataMap.length == 4);
     leaderChangeCount += 1;
     leaderContinuousCount = 0;
-    _updateTableListener();
+    _updateTableListener("nextLeader");
     _setupHand();
   }
 
   void previousLeader() {
     if (leaderChangeCount > 0) leaderChangeCount -= 1;
     leaderContinuousCount = 0;
-    _updateTableListener();
+    _updateTableListener("previousLeader");
     _setupHand();
   }
 
   void continueLeader() {
     leaderContinuousCount += 1;
-    _updateTableListener();
+    _updateTableListener("continueLeader");
     _setupHand();
   }
 
   void setLeaderContinuousCount(int count) {
     leaderContinuousCount = count;
-    _updateTableListener();
+    _updateTableListener("setLeaderContinuousCount");
   }
 
   void handleReplacePeerId(
@@ -344,7 +344,7 @@ class Table extends TableData {
     lastDiscardedPlayerPeerID = lastDiscardedPlayerPeerID == oldPeerId
         ? peerId
         : lastDiscardedPlayerPeerID;
-    _updateTableListener();
+    _updateTableListener("handleReplacePeerId");
   }
 
   List<int> _createShuffledTiles() {
@@ -372,7 +372,7 @@ class Table extends TableData {
     replacementTiles = allTiles.sublist(0, 4);
     deadWallTiles = allTiles.sublist(4, 14);
     wallTiles = allTiles.sublist(14);
-    _updateTableListener();
+    _updateTableListener("_setupHand1");
     for (var i = 0; i < 3; i++) {
       await Future.delayed(const Duration(seconds: 1));
       for (final peerId in idList()) {
@@ -384,7 +384,7 @@ class Table extends TableData {
         if (i == 2) tiles.add(wallTiles.removeLast());
         playerDataMap[peerId]!.tiles.addAll(tiles);
       }
-      _updateTableListener();
+      _updateTableListener("_setupHand2");
     }
     await Future.delayed(const Duration(seconds: 2));
     for (final v in playerDataMap.values) {
@@ -392,7 +392,7 @@ class Table extends TableData {
     }
     _turnTo(currentLeader());
     state = TableState.drawable;
-    _updateTableListener();
+    _updateTableListener("_setupHand3");
   }
 
   String currentLeader() {
@@ -418,7 +418,7 @@ class Table extends TableData {
 
   void _onDrawGame() async {
     state = TableState.drawGame;
-    _updateTableListener();
+    _updateTableListener("_onDrawGame1");
     await Future.delayed(const Duration(seconds: 1));
 
     //　リーチ棒の精算
@@ -430,7 +430,7 @@ class Table extends TableData {
     }
 
     state = TableState.processingFinishHand;
-    _updateTableListener();
+    _updateTableListener("_onDrawGame2");
   }
 
   _checkState(String peerId,
@@ -470,7 +470,7 @@ class Table extends TableData {
     data.drawnTile.add(drawnTile);
 
     state = TableState.waitToDiscard;
-    _updateTableListener();
+    _updateTableListener("handleDrawTile");
   }
 
   handleDiscardTile({required String peerId, required int tile}) {
@@ -513,7 +513,7 @@ class Table extends TableData {
 
     _nextTurn(turnedPeerId);
     state = TableState.drawable;
-    _updateTableListener();
+    _updateTableListener("handleDiscardTile");
   }
 
   handleDiscardTileWithRiichi({required String peerId, required int tile}) {
@@ -531,14 +531,14 @@ class Table extends TableData {
     _checkState(peerId, allowTableState: [TableState.drawable]);
     _turnTo(peerId);
     state = TableState.called;
-    _updateTableListener();
+    _updateTableListener("handleCall");
   }
 
   handleCancelCall({required String peerId}) {
     _checkState(peerId, needMyTurn: true, allowTableState: [TableState.called]);
     _nextTurn(lastDiscardedPlayerPeerID);
     state = TableState.drawable;
-    _updateTableListener();
+    _updateTableListener("handleCancelCall");
   }
 
   handleWin({required String peerId}) {
@@ -559,7 +559,7 @@ class Table extends TableData {
     remainRiichiBarCounts = 0;
 
     state = TableState.processingFinishHand;
-    _updateTableListener();
+    _updateTableListener("handleWin");
   }
 
   handlePongOrChow(
@@ -573,7 +573,7 @@ class Table extends TableData {
     _setSelectedTiles(peerId, _toListInt(selectedTiles), "pong-chow");
 
     state = TableState.waitToDiscardForPongOrChow;
-    _updateTableListener();
+    _updateTableListener("handlePongOrChow");
   }
 
   handleOpenKan(
@@ -594,7 +594,7 @@ class Table extends TableData {
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
 
     state = TableState.waitToDiscardForOpenOrLateKan;
-    _updateTableListener();
+    _updateTableListener("handleOpenKan");
   }
 
   handleCloseKan(
@@ -628,7 +628,7 @@ class Table extends TableData {
     countOfKan += 1;
 
     state = TableState.waitToDiscard;
-    _updateTableListener();
+    _updateTableListener("handleCloseKan");
   }
 
   handleLateKan(
@@ -663,7 +663,7 @@ class Table extends TableData {
     wallTiles.removeAt(0); // 山牌の牌を一つ消す。
 
     state = TableState.waitToDiscardForOpenOrLateKan;
-    _updateTableListener();
+    _updateTableListener("handleLateKan");
   }
 
   void _setSelectedTiles(
@@ -687,7 +687,7 @@ class Table extends TableData {
     _checkState(peerId);
     final data = playerData(peerId)!;
     data.openTiles = !data.openTiles;
-    _updateTableListener();
+    _updateTableListener("handleOpenTiles");
   }
 
   handleRequestScore(
@@ -696,7 +696,7 @@ class Table extends TableData {
       final data = playerData(e.key)!;
       data.requestingScoreFrom[peerId] = e.value; // Score
     }
-    _updateTableListener();
+    _updateTableListener("handleRequestScore");
   }
 
   handleAcceptRequestedScore(
@@ -706,7 +706,7 @@ class Table extends TableData {
     final data2 = playerData(requester)!;
     data1.score += score;
     data2.score -= score;
-    _updateTableListener();
+    _updateTableListener("handleAcceptRequestedScore");
   }
 
   handleRequestNextHand({required String peerId, required String mode}) {
@@ -725,7 +725,7 @@ class Table extends TableData {
     if (mode == "previousLeader") {
       state = TableState.waitingNextHandForPreviousLeader;
     }
-    _updateTableListener();
+    _updateTableListener("handleRequestNextHand");
   }
 
   handleAcceptNextHand({required String peerId}) {
@@ -766,7 +766,7 @@ class Table extends TableData {
       data.acceptedNextHand = false;
     }
     state = TableState.processingFinishHand;
-    _updateTableListener();
+    _updateTableListener("handleRefuseNextHand");
   }
 
   handleRequestDrawGame({required String peerId}) {
@@ -776,7 +776,7 @@ class Table extends TableData {
       data.acceptedDrawGame = false;
     }
     state = TableState.waitingDrawGame;
-    _updateTableListener();
+    _updateTableListener("handleRequestDrawGame");
   }
 
   handleAcceptDrawGame({required String peerId}) {
@@ -800,7 +800,7 @@ class Table extends TableData {
       data.acceptedDrawGame = false;
     }
     state = TableState.drawable;
-    _updateTableListener();
+    _updateTableListener("handleRefuseDrawGame");
   }
 
   handleRequestGameReset({required String peerId}) {
@@ -810,7 +810,7 @@ class Table extends TableData {
       data.acceptedGameReset = false;
     }
     state = TableState.waitingGameReset;
-    _updateTableListener();
+    _updateTableListener("handleRequestGameReset");
   }
 
   handleAcceptGameReset({required String peerId}) {
@@ -842,7 +842,7 @@ class Table extends TableData {
       data.acceptedGameReset = false;
     }
     state = TableState.processingFinishHand;
-    _updateTableListener();
+    _updateTableListener("handleRefuseGameReset");
   }
 
   handleSetLeaderContinuousCount({required String peerId, required int count}) {
