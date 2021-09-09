@@ -17,6 +17,10 @@ class TableRibbonWidget extends StatefulWidget {
 }
 
 class _TableRibbonWidgetState extends State<TableRibbonWidget> {
+  var globalKey1 = GlobalKey();
+  var globalKey2 = GlobalKey();
+  var globalKey3 = GlobalKey();
+
   game.Game g() {
     return widget.gameData;
   }
@@ -45,30 +49,64 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     return g().member[g().table.turnedPeerId] ?? "Unknown";
   }
 
+  var lastScrollViewSize = 100.0;
+
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance?.addPostFrameCallback((cb) {
+      RenderBox? box1 =
+          globalKey1.currentContext!.findRenderObject() as RenderBox?;
+      if (box1 != null) {
+        print(
+            "box1.size: ${box1.size}, pos:${box1.localToGlobal(Offset.zero)}");
+      }
+      RenderBox? box2 =
+          globalKey2.currentContext!.findRenderObject() as RenderBox?;
+      if (box2 != null) {
+        print(
+            "box2.size: ${box2.size}, pos:${box2.localToGlobal(Offset.zero)}");
+        if (lastScrollViewSize != box2.size.width - 20) {
+          setState(() {
+            lastScrollViewSize = box2.size.width - 20;
+          });
+        }
+      }
+    });
+
+    return Row(children: [
+      Expanded(
+          key: globalKey2,
+          child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: lastScrollViewSize,
+                  ),
+                  child: Row(
+                    key: globalKey1,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: buildActionButtons(),
+                  )))),
+      Container(child: _buildPopupMenu())
+    ]);
+  }
+
+  List<Widget> buildActionButtons() {
     final tblState = g().table.state;
 
     if (tblState == tbl.TableState.notSetup ||
         tblState == tbl.TableState.doingSetupHand) {
-      return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: _buildInSetup());
+      return _buildInSetup();
     }
 
     if (tblState == tbl.TableState.processingFinishHand) {
-      return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: _buildRibbonForFinishHand());
+      return _buildRibbonForFinishHand();
     }
+
     if (g().isMyTurn()) {
-      return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: _buildForMyTurn());
+      return _buildForMyTurn();
     } else {
-      return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: buildForOtherTurn());
+      return buildForOtherTurn();
     }
   }
 
@@ -88,7 +126,6 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       _buildButtonForCallCmd("ツモる", null),
       _buildButtonForCallCmd("鳴く", null),
       _buildButtonForCallCmd("ロン", null),
-      _buildPopupMenu()
     ];
   }
 
@@ -96,35 +133,30 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     if (g().myTurnTempState.onCalledRiichi) {
       return [
         _buildButtonForCallCmd("リーチキャンセル", g().cancelRiichi),
-        _buildPopupMenu()
       ];
     }
     if (g().myTurnTempState.onCalledTsumo) {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelTsumo),
         _buildButtonForCallCmd("Ok", g().win),
-        _buildPopupMenu()
       ];
     }
     if (g().myTurnTempState.onCalledRon) {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelCall),
         _buildButtonForCallCmd("Ok", g().win),
-        _buildPopupMenu()
       ];
     }
     if (g().myTurnTempState.onCalledFor == "lateKanStep2") {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelCall),
         _buildButtonForCallCmd("OK", g().setSelectedTiles),
-        _buildPopupMenu()
       ];
     }
     if (g().selectableTilesQuantity() > 0) {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelCall),
         _buildButtonForCallCmd("OK", g().setSelectedTiles),
-        _buildPopupMenu()
       ];
     }
 
@@ -135,7 +167,6 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         _buildButtonForCallCmd("ポン", g().pong),
         _buildButtonForCallCmd("チー", g().chow),
         _buildButtonForCallCmd("カン", g().openKan),
-        _buildPopupMenu()
       ];
     }
 
@@ -145,14 +176,12 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           _buildButtonForCallCmd("ツモる", g().drawTile),
           _buildButtonForCallCmd("鳴く", g().call),
           _buildButtonForCallCmd("ロン", g().callRon),
-          _buildPopupMenu()
         ];
       } else {
         return [
           _buildButtonForCallCmd("ツモる", g().drawTile),
           _buildButtonForCallCmd("鳴く", null),
           _buildButtonForCallCmd("ロン", null),
-          _buildPopupMenu()
         ];
       }
     }
@@ -166,7 +195,6 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         _buildButtonForCallCmd("ツモ", g().tsumo),
         _buildButtonForCallCmd("暗槓", g().closeKan),
         _buildButtonForCallCmd("加槓", g().lateKan),
-        _buildPopupMenu()
       ];
     }
 
@@ -176,7 +204,6 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         _buildButtonForCallCmd("ツモ", null),
         _buildButtonForCallCmd("暗槓", null),
         _buildButtonForCallCmd("加槓", null),
-        _buildPopupMenu()
       ];
     }
 
@@ -189,20 +216,18 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         _buildButtonForCallCmd("ツモる", null),
         _buildButtonForCallCmd("鳴く", g().call),
         _buildButtonForCallCmd("ロン", g().callRon),
-        _buildPopupMenu()
       ];
     }
     return [
       _buildButtonForCallCmd("ツモる", null),
       _buildButtonForCallCmd("鳴く", null),
       _buildButtonForCallCmd("ロン", null),
-      _buildPopupMenu()
     ];
   }
 
   List<Widget> _buildRibbonForFinishHand() {
     return [
-      _buildButtonForCallCmd("手牌オープン", g().openMyWall),
+      _buildButtonForCallCmd("ああああああああああ手牌オープン", g().openMyWall),
       _buildButtonForCallCmd("点棒支払", () {
         showTradingScoreRequestDialog(context, g());
       }),
@@ -210,7 +235,6 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         showRequestNextHandDialog(context, g());
       }),
       _buildButtonForCallCmd("ゲームリセット", g().requestGameReset),
-      _buildPopupMenu()
     ];
   }
 
