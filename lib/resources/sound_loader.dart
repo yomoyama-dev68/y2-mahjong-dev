@@ -21,6 +21,11 @@ class Sounds {
       rootBundle.load("assets/sounds/open_my_wall.wav").then((ByteData data) {
     return _pool.load(data);
   });
+  static final _call =
+  rootBundle.load("assets/sounds/call.wav").then((ByteData data) {
+    return _pool.load(data);
+  });
+
 
   static discardTile() async {
     _pool.play(await _discardTile);
@@ -36,5 +41,9 @@ class Sounds {
 
   static openMyWall() async {
     _pool.play(await _openMyWall);
+  }
+
+  static call() async {
+    _pool.play(await _call);
   }
 }

@@ -100,15 +100,20 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     print("onChangeGameTableData");
     if (_game.isOwner()) {
       final soundMap = <String, Function>{
-        "_setupHand2":  Sounds.drawTile,
-        "_setupHand3":  Sounds.sortTiles,
-        "handleDrawTile":  Sounds.drawTile,
-        "handleDiscardTile":  Sounds.discardTile,
-        "handlePongOrChow":  Sounds.sortTiles,
-        "handleOpenKan":  Sounds.sortTiles,
-        "handleCloseKan":  Sounds.sortTiles,
-        "handleLateKan":  Sounds.sortTiles,
-        "handleOpenTiles":  Sounds.openMyWall,
+        "_setupHand2": Sounds.drawTile,
+        "_setupHand3": Sounds.sortTiles,
+        "handleDrawTile": Sounds.drawTile,
+        "handleDiscardTile": Sounds.discardTile,
+        "handlePongOrChow": Sounds.sortTiles,
+        "handleOpenKan": Sounds.sortTiles,
+        "handleCloseKan": Sounds.sortTiles,
+        "handleLateKan": Sounds.sortTiles,
+        "handleOpenTiles": Sounds.openMyWall,
+        "handleWin": Sounds.call,
+        "handleRequestNextHand": Sounds.call,
+        "handleCall": Sounds.call,
+        "handleCancelCall": Sounds.call,
+        "handleRequestDrawGame": Sounds.call,
       };
       soundMap[updatedFor]?.call();
     }
