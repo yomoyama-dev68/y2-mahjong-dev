@@ -240,7 +240,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
 
   List<Widget> _buildRibbonForFinishHand() {
     return [
-      _buildButtonForCallCmd("ああああああああああ手牌オープン", g().openMyWall),
+      _buildButtonForCallCmd("手牌オープン", g().openMyWall),
       _buildButtonForCallCmd("点棒支払", () {
         showTradingScoreRequestDialog(context, g());
       }),

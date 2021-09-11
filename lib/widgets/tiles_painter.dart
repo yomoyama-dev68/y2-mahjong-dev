@@ -388,8 +388,7 @@ class TilesPainter {
     return 0;
   }
 
-  static
-  List<List<int>> createCalledTileDirectionMap(
+  static List<List<int>> createCalledTileDirectionMap(
     String peerId,
     tbl.CalledTiles tiles,
     int direction,
@@ -397,11 +396,19 @@ class TilesPainter {
   ) {
     final tileDirectionMap = <List<int>>[]; // [direction, tile, step mode]
     if (tiles.callAs == "close-kan") {
-      tileDirectionMap.add([direction, -1, 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
-      tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
-      tileDirectionMap.add([direction, -1, 0]);
-      return tileDirectionMap;
+      if (tableData.justCalledClosedKanTilesId == tiles.id()) {
+        tileDirectionMap.add([direction, tiles.selectedTiles[0], 0]);
+        tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
+        tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
+        tileDirectionMap.add([direction, tiles.selectedTiles[3], 0]);
+        return tileDirectionMap;
+      } else {
+        tileDirectionMap.add([direction, -1, 0]);
+        tileDirectionMap.add([direction, tiles.selectedTiles[1], 0]);
+        tileDirectionMap.add([direction, tiles.selectedTiles[2], 0]);
+        tileDirectionMap.add([direction, -1, 0]);
+        return tileDirectionMap;
+      }
     }
 
     //final peerId = _tableData.playerDataMap.keys.toList()[direction];
@@ -441,8 +448,12 @@ class TilesPainter {
     return tileDirectionMap;
   }
 
-  Offset drawCalledTilesPerDirection2(List<DrawObject> drawObjects,
-      String peerId, tbl.CalledTiles tiles, int direction, Offset baseOffset,
+  Offset drawCalledTilesPerDirection2(
+      List<DrawObject> drawObjects,
+      String peerId,
+      tbl.CalledTiles tiles,
+      int direction,
+      Offset baseOffset,
       tbl.TableData tableData) {
     final tileDirectionMap =
         createCalledTileDirectionMap(peerId, tiles, direction, tableData);

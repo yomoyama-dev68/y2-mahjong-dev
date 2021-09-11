@@ -6,6 +6,10 @@ _toListInt(List<dynamic> obj) {
   return (obj).map((e) => e as int).toList();
 }
 
+_toListString(List<dynamic> obj) {
+  return (obj).map((e) => e as String).toList();
+}
+
 _toListCalledTiles(List<dynamic> obj) {
   return (obj)
       .map((e) => CalledTiles.fromJsonMap(e as Map<String, dynamic>))
@@ -37,8 +41,8 @@ class TileInfo {
 }
 
 class CalledTiles {
-  CalledTiles(
-      this.calledTile, this.calledFrom, this.selectedTiles, this.callAs);
+  CalledTiles(this.calledTile, this.calledFrom, this.selectedTiles,
+      this.callAs);
 
   factory CalledTiles.fromJsonMap(Map<String, dynamic> map) {
     return CalledTiles(map["calledTile"] as int, map["calledFrom"] as String,
@@ -49,6 +53,10 @@ class CalledTiles {
   final String calledFrom;
   final List<int> selectedTiles;
   final String callAs;
+
+  String id() {
+    return selectedTiles.join("_");
+  }
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
@@ -160,6 +168,7 @@ class RefuseException implements Exception {
 class TableState {
   static const notSetup = "notSetup";
   static const doingSetupHand = "doingSetupHand";
+
   // static const doneSetupHand = "doneSetupHand";
 
   static const drawable = "drawable";
@@ -198,6 +207,7 @@ class TableData {
   int lastDiscardedTile = -1;
   String lastDiscardedPlayerPeerID = "";
   int countOfKan = 0;
+  String justCalledClosedKanTilesId = ""; // 暗槓された牌のID。打牌するまで、暗槓の両端を表側で表示するために使う。
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
@@ -213,6 +223,7 @@ class TableData {
     map["wallTiles"] = wallTiles;
     map["deadWallTiles"] = deadWallTiles;
     map["replacementTiles"] = replacementTiles;
+    map["justCalledClosedKanTilesId"] = justCalledClosedKanTilesId;
 
     map["lastDiscardedTile"] = lastDiscardedTile;
     map["lastDiscardedPlayerPeerID"] = lastDiscardedPlayerPeerID;
@@ -234,6 +245,7 @@ class TableData {
     wallTiles = _toListInt(map["wallTiles"]);
     deadWallTiles = _toListInt(map["deadWallTiles"]);
     replacementTiles = _toListInt(map["replacementTiles"]);
+    justCalledClosedKanTilesId = map["justCalledClosedKanTilesId"] as String;
 
     lastDiscardedTile = map["lastDiscardedTile"] as int;
     lastDiscardedPlayerPeerID = map["lastDiscardedPlayerPeerID"] as String;
@@ -289,7 +301,8 @@ class Table extends TableData {
 
     // メンバーの順番を乱数でシャッフルする。
     final shuffled = <String, String>{}; // <Peer ID, Player Name>
-    for (final id in member.keys.toList()..shuffle()) {
+    for (final id in member.keys.toList()
+      ..shuffle()) {
       shuffled[id] = member[id]!;
     }
 
@@ -435,8 +448,8 @@ class Table extends TableData {
 
   _checkState(String peerId,
       {bool needMyTurn = false,
-      bool needNotMyTurn = false,
-      List<String> allowTableState = const []}) {
+        bool needNotMyTurn = false,
+        List<String> allowTableState = const []}) {
     final data = playerData(peerId);
     if (data == null) {
       throw StateError("No Player(${peerId}) data.");
@@ -503,6 +516,7 @@ class Table extends TableData {
     data.tiles.sort();
     data.discardedTiles.add(tile);
 
+    justCalledClosedKanTilesId = ""; // 暗槓の両端を裏側表示にするためにクリアする。
     lastDiscardedTile = tile;
     lastDiscardedPlayerPeerID = turnedPeerId;
 
@@ -612,9 +626,9 @@ class Table extends TableData {
 
     final data = playerData(peerId)!;
     // 鳴き牌登録
-    data.calledTiles
-        .add(CalledTiles(-1, peerId, _toListInt(selectedTiles), "close-kan"));
-    // 鳴き牌を持ち牌から除外
+    final calledTiles = CalledTiles(-1, peerId, _toListInt(selectedTiles), "close-kan");
+    data.calledTiles.add(calledTiles);
+    justCalledClosedKanTilesId = calledTiles.id();
 
     // 鳴き牌を持ち牌から除外
     data.tiles.addAll(data.drawnTile);
@@ -631,10 +645,9 @@ class Table extends TableData {
     _updateTableListener("handleCloseKan");
   }
 
-  handleLateKan(
-      {required String peerId,
-      required int tile,
-      required int calledTilesIndex}) {
+  handleLateKan({required String peerId,
+    required int tile,
+    required int calledTilesIndex}) {
     if (countOfKan >= 4) {
       throw RefuseException("Already kan has been called 4 times.");
     }
@@ -666,8 +679,8 @@ class Table extends TableData {
     _updateTableListener("handleLateKan");
   }
 
-  void _setSelectedTiles(
-      String peerId, List<int> selectedTiles, String callAs) {
+  void _setSelectedTiles(String peerId, List<int> selectedTiles,
+      String callAs) {
     // 鳴き牌を持ち牌から除外
     final data = playerData(peerId)!;
     for (final tile in selectedTiles) {
@@ -828,7 +841,7 @@ class Table extends TableData {
     print("handleAcceptGameReset: waitingPlayerCount=${waitingPlayerCount}");
     if (waitingPlayerCount == 4) {
       final member =
-          playerDataMap.map((key, value) => MapEntry(key, value.name));
+      playerDataMap.map((key, value) => MapEntry(key, value.name));
       print("handleAcceptGameReset: member=${member}");
       startGame(member);
       nextLeader();
