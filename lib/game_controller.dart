@@ -7,12 +7,13 @@ import 'commad_handler.dart';
 
 const skyWayKey = '05bd41ee-71ec-4d8b-bd68-f6b7e1172b76';
 const roomMode = "mesh";
-const useStab = true;
+const useStab = false;
 
 enum GameState {
   onCreatingMyPeer,
   onJoiningRoom,
   onSettingMyName,
+  onNeedRejoin,
   onWaitingOtherPlayersForStart,
   onWaitingOtherPlayersInGame,
   onGame,
@@ -94,6 +95,7 @@ class Game {
   GameState state = GameState.onCreatingMyPeer;
 
   void _setState(GameState newState) {
+    if (state == newState) return;
     final oldState = state;
     state = newState;
     onChangeGameState(oldState, state);
@@ -426,15 +428,21 @@ class Game {
     }
 
     if (dataType == "notifyMember") {
+      // メンバーマップを最新のものに置き換える、
       member.addAll((data["member"] as Map<String, dynamic>)
           .map((key, value) => MapEntry(key, value as String)));
+      // 通信途絶したメンバーが自分だった場合、通信と
       final lostMember = (data["lostPlayerNames"] as Map<String, dynamic>).map((
           key,
           value) => MapEntry(key, value as String));
+      print("notifyMember: myPeerId=${myPeerId}, member=${member}, lostMember=${lostMember}");
+      print("notifyMember: lostMember.isNotEmpty=${lostMember.isNotEmpty}, !member.containsKey(myPeerId)=${!member.containsKey(myPeerId)}");
       if (lostMember.isNotEmpty && !member.containsKey(myPeerId)) {
         lostPlayerNames
           ..clear()
           ..addAll(lostMember);
+        _setState(GameState.onNeedRejoin);
+        print("notifyMember: lostPlayerNames=${lostPlayerNames}");
       }
     }
 
@@ -484,7 +492,7 @@ class Game {
     }
 
     if (oldData["turnedPeerId"] != newData["turnedPeerId"]) {
-      if (newData == myPeerId) {
+      if (newData["turnedPeerId"] == myPeerId) {
         onEventGameTable("onMyTurned");
       }
     }

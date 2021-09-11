@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class NameSetDialog extends StatefulWidget {
+  static final globalKey = GlobalKey();
+
   const NameSetDialog({Key? key, required this.name}) : super(key: key);
 
   final String name;
@@ -14,6 +16,12 @@ class NameSetDialog extends StatefulWidget {
         return dialog;
       },
     );
+  }
+
+  static void close() {
+    if (globalKey.currentContext != null) {
+      Navigator.pop<String>(globalKey.currentContext!, "close");
+    }
   }
 
   @override
@@ -35,6 +43,7 @@ class NameSetDialogState extends State<NameSetDialog> {
     ];
 
     return AlertDialog(
+      key: NameSetDialog.globalKey,
       title: const Text("プレイヤー名を入力してください"),
       content: TextField(
         controller: _textController,
@@ -69,10 +78,11 @@ class RejoinNameSelectDialog {
     return showDialog(
       context: context,
       builder: (BuildContext context) {
-        return SimpleDialog(
+        final dialog = SimpleDialog(
           title: const Text('どのプレイヤーだったか選んでください。'),
           children: widgets,
         );
+        return dialog;
       },
     );
   }

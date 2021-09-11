@@ -23,9 +23,9 @@ class TopWidgetState extends State<TopWidget> {
     return SingleChildScrollView(
         child: Column(children: [
       GameTableWidget(roomId: widget.roomId),
-      GameTableWidget(roomId: widget.roomId, playerName: "Player2"),
-      GameTableWidget(roomId: widget.roomId, playerName: "Player3"),
-      GameTableWidget(roomId: widget.roomId, playerName: "Player4"),
+      //GameTableWidget(roomId: widget.roomId, playerName: "Player2"),
+      //GameTableWidget(roomId: widget.roomId, playerName: "Player3"),
+      //GameTableWidget(roomId: widget.roomId, playerName: "Player4"),
     ]));
   }
 }

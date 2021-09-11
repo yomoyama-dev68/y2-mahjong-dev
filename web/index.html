@@ -80,15 +80,16 @@
 
       room.on('data', ({ data, src }) => {
         console.log('index: data: E');
+        console.log(data);
         onDataCallback(data, src);
         console.log('index: data: X');
       });
 
       room.on('peerLeave', peerId => {
         console.log('index: peerLeave: E');
-        const remoteAudio = remoteAudioMap[stream.peerId];
-        remoteAudio.srcObject.getTracks().forEach(track => track.stop());
-        remoteAudio.srcObject = null;
+        //const remoteAudio = remoteAudioMap[stream.peerId];
+        //remoteAudio.srcObject.getTracks().forEach(track => track.stop());
+        //remoteAudio.srcObject = null;
         onPeerLeave(peerId);
         console.log('index: peerLeave: X');
       });
@@ -109,6 +110,7 @@
 
     function sendData(data) {
       console.log('index: sendData: E');
+      console.log(data);
       room.send(data);
       console.log('index: sendData: X');
     }

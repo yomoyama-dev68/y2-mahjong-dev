@@ -58,12 +58,12 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   void onChangeGameState(game.GameState oldState, game.GameState newState) {
     print("onChangeGameState: ${_game.myPeerId}: $oldState, $newState");
     if (newState == game.GameState.onSettingMyName) {
-      if (_game.lostPlayerNames.isEmpty) {
-        _setMyName();
-      } else {
-        _rejoin();
-      }
+      _setMyName();
     }
+    if (newState == game.GameState.onNeedRejoin) {
+      _rejoin();
+    }
+
     setState(() {});
   }
 
@@ -139,14 +139,17 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     }
     while (true) {
       final name = await NameSetDialog.show(context, _game.myName());
+      print("NameSetDialog: ${name}");
       if (name != null) {
         _game.setMyName(name);
         return;
       }
+      if (name == "close") return;
     }
   }
 
   Future<void> _rejoin() async {
+    NameSetDialog.close();
     while (true) {
       final name = await RejoinNameSelectDialog.show(
           context, _game.lostPlayerNames.keys.toList());
