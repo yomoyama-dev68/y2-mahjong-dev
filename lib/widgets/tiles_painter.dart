@@ -571,7 +571,7 @@ class TilesPainter {
     for (var direction = 0; direction < 4; direction++) {
       final index = (baseDirection + direction) % 4;
       final data = _tableData.playerDataMap[keyList[index]]!;
-      if (data.riichiTile.isNotEmpty) {
+      if (data.existRiichiBar) {
         final drawPos = size.center(riichiBarDrawPos(direction, 33.0 * 2.7));
         final image = _imageMap["riichibar_${direction}"]!;
         drawObjects.add(DrawObject(image, drawPos, false));

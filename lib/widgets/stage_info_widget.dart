@@ -44,7 +44,7 @@ class StageInfoWidget extends StatelessWidget {
     var riichiCount = table.remainRiichiBarCounts;
     //　リーチ棒の精算
     for (final data in table.playerDataMap.values) {
-      if (data.riichiTile.isNotEmpty) riichiCount += 1;
+      if (data.existRiichiBar) riichiCount += 1;
     }
 
     return Opacity(

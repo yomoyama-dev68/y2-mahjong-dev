@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:web_app_sample/dialogs/get_riichi_bar_score_dialog.dart';
 import 'package:web_app_sample/widgets/player_state_tile.dart';
 import 'package:web_app_sample/resources/sound_loader.dart';
 import 'package:web_app_sample/widgets/stage_info_widget.dart';
@@ -87,6 +88,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     }
     if (newState == tbl.TableState.waitingGameReset) {
       showAcceptGameResetDialog(context, _game);
+    }
+    if (newState == tbl.TableState.processingFinishHand) {
+      if (_game.table.lastWinner == _game.myPeerId && _game.existRiichiBar()) {
+        showGetRiichiBarScoreDialogAll(context, _game);
+      }
     }
 
     const waitToDiscards = [
@@ -317,7 +323,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           child: Transform.rotate(
               angle: angles[direction],
               child: PlayerStateTile(winds[leaderIndex], data.name, data.score,
-                  data.riichiTile.isNotEmpty, turned))));
+                  data.existRiichiBar, turned))));
     }
 
     return widgets;

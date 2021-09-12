@@ -39,14 +39,15 @@ class MyTurnTempState {
 }
 
 class Game {
-  Game({required this.roomId,
-    required this.onChangeGameState,
-    required this.onChangeMember,
-    required this.onChangeGameTableState,
-    required this.onRequestScore,
-    required this.onEventGameTable,
-    required this.onChangeGameTableData,
-    required this.onReceiveCommandResult}) {
+  Game(
+      {required this.roomId,
+      required this.onChangeGameState,
+      required this.onChangeMember,
+      required this.onChangeGameTableState,
+      required this.onRequestScore,
+      required this.onEventGameTable,
+      required this.onChangeGameTableData,
+      required this.onReceiveCommandResult}) {
     print("Game:Game():1");
     table = Table(_tableOnUpdateTable);
     print("Game:Game():2");
@@ -145,6 +146,14 @@ class Game {
     return myPeerId == table.turnedPeerId;
   }
 
+  bool existRiichiBar() {
+    if (table.remainRiichiBarCounts > 0) return true;
+    for (final data in table.playerDataMap.values) {
+      if (data.existRiichiBar) return true;
+    }
+    return false;
+  }
+
   Map<String, Function> commandMap() {
     return <String, Function>{
       "handleDrawTile": table.handleDrawTile,
@@ -171,6 +180,10 @@ class Game {
       "handleRefuseGameReset": table.handleRefuseGameReset,
       "handleSetLeaderContinuousCount": table.handleSetLeaderContinuousCount,
       "handleReplacePeerId": table.handleReplacePeerId,
+      "handleGetRiichiBarScoreAll": table.handleGetRiichiBarScoreAll,
+      //"handleRequestGetRiichiBarScore": table.handleRequestGetRiichiBarScore,
+      //"handleAcceptGetRiichiBarScore": table.handleAcceptGetRiichiBarScore,
+      //"handleRefuseGetRiichiBarScore": table.handleRefuseGetRiichiBarScore,
     };
   }
 
@@ -381,6 +394,32 @@ class Game {
         args: {"count": count}));
   }
 
+  Future<void> handleGetRiichiBarScoreAll() async {
+    _handleCommandResult(
+        await _handleCmd("handleGetRiichiBarScoreAll", myPeerId));
+  }
+
+  /*
+  Future<void> handleRequestGetRiichiBarScore(
+      List<String> targetPeerIds, int numberOfRemainRiichiBars) async {
+    _handleCommandResult(
+        await _handleCmd("handleRequestGetRiichiBarScore", myPeerId, args: {
+      "targetPeerIds": targetPeerIds,
+      "numberOfRemainRiichiBars": numberOfRemainRiichiBars
+    }));
+  }
+
+  Future<void> handleAcceptGetRiichiBarScore() async {
+    _handleCommandResult(
+        await _handleCmd("handleAcceptGetRiichiBarScore", myPeerId));
+  }
+
+  Future<void> handleRefuseGetRiichiBarScore() async {
+    _handleCommandResult(
+        await _handleCmd("handleRefuseGetRiichiBarScore", myPeerId));
+  }
+   */
+
   void _skyWayOnOpen() {
     print("_skyWayOnOpen: $myPeerId");
     _setState(GameState.onSettingMyName);
@@ -432,11 +471,12 @@ class Game {
       member.addAll((data["member"] as Map<String, dynamic>)
           .map((key, value) => MapEntry(key, value as String)));
       // 通信途絶したメンバーが自分だった場合、通信と
-      final lostMember = (data["lostPlayerNames"] as Map<String, dynamic>).map((
-          key,
-          value) => MapEntry(key, value as String));
-      print("notifyMember: myPeerId=${myPeerId}, member=${member}, lostMember=${lostMember}");
-      print("notifyMember: lostMember.isNotEmpty=${lostMember.isNotEmpty}, !member.containsKey(myPeerId)=${!member.containsKey(myPeerId)}");
+      final lostMember = (data["lostPlayerNames"] as Map<String, dynamic>)
+          .map((key, value) => MapEntry(key, value as String));
+      print(
+          "notifyMember: myPeerId=${myPeerId}, member=${member}, lostMember=${lostMember}");
+      print(
+          "notifyMember: lostMember.isNotEmpty=${lostMember.isNotEmpty}, !member.containsKey(myPeerId)=${!member.containsKey(myPeerId)}");
       if (lostMember.isNotEmpty && !member.containsKey(myPeerId)) {
         lostPlayerNames
           ..clear()
@@ -484,8 +524,8 @@ class Game {
     }
   }
 
-  void _notifyUpdatedTableData(Map<String, dynamic> oldData,
-      Map<String, dynamic> newData) {
+  void _notifyUpdatedTableData(
+      Map<String, dynamic> oldData, Map<String, dynamic> newData) {
     print("_notifyUpdatedTableData: ${myPeerId}");
     if (oldData["state"] != newData["state"]) {
       onChangeGameTableState(oldData["state"], newData["state"]);

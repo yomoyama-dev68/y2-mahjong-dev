@@ -12,6 +12,7 @@ class NameSetDialog extends StatefulWidget {
     final dialog = NameSetDialog(name: currentName);
     return showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return dialog;
       },

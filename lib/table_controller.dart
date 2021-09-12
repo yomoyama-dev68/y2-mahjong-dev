@@ -41,8 +41,8 @@ class TileInfo {
 }
 
 class CalledTiles {
-  CalledTiles(this.calledTile, this.calledFrom, this.selectedTiles,
-      this.callAs);
+  CalledTiles(
+      this.calledTile, this.calledFrom, this.selectedTiles, this.callAs);
 
   factory CalledTiles.fromJsonMap(Map<String, dynamic> map) {
     return CalledTiles(map["calledTile"] as int, map["calledFrom"] as String,
@@ -81,8 +81,10 @@ class PlayerData {
     data.acceptedDrawGame = map["acceptedDrawGame"] as bool;
     data.acceptedNextHand = map["acceptedNextHand"] as bool;
     data.acceptedGameReset = map["acceptedGameReset"] as bool;
+    data.acceptedGetRiichiBarScore = map["acceptedGetRiichiBarScore"] as bool;
     data.score = map["score"] as int;
     data.openTiles = map["openTiles"];
+    data.existRiichiBar = map["existRiichiBar"];
     data.tiles.addAll(_toListInt(map["tiles"]));
     data.drawnTile.addAll(_toListInt(map["drawnTile"]));
     data.discardedTiles.addAll(_toListInt(map["discardedTiles"]));
@@ -99,8 +101,10 @@ class PlayerData {
   bool acceptedDrawGame = false;
   bool acceptedNextHand = false;
   bool acceptedGameReset = false;
+  bool acceptedGetRiichiBarScore = false;
   int score = 25000;
   bool openTiles = false;
+  bool existRiichiBar = false;
 
   final List<int> drawnTile = []; // 引いてきた牌
   final List<int> tiles = []; // 持ち牌
@@ -109,8 +113,9 @@ class PlayerData {
   final List<int> calledTilesByOther = []; // 鳴かれた牌
   final List<int> riichiTile = []; // リーチ牌
 
-  void clearTiles() {
+  void clearState() {
     openTiles = false;
+    existRiichiBar = false;
     drawnTile.clear();
     tiles.clear();
     discardedTiles.clear();
@@ -122,6 +127,7 @@ class PlayerData {
     acceptedDrawGame = false;
     acceptedNextHand = false;
     acceptedGameReset = false;
+    acceptedGetRiichiBarScore = false;
   }
 
   Map<String, dynamic> toMap() {
@@ -132,13 +138,43 @@ class PlayerData {
     map["acceptedDrawGame"] = acceptedDrawGame;
     map["acceptedNextHand"] = acceptedNextHand;
     map["acceptedGameReset"] = acceptedGameReset;
+    map["acceptedGetRiichiBarScore"] = acceptedGetRiichiBarScore;
+
     map["openTiles"] = openTiles;
+    map["existRiichiBar"] = existRiichiBar;
     map["drawnTile"] = drawnTile;
     map["tiles"] = tiles;
     map["discardedTiles"] = discardedTiles;
     map["calledTiles"] = calledTiles.map((v) => v.toMap()).toList();
     map["calledTilesByOther"] = calledTilesByOther;
     map["riichiTile"] = riichiTile;
+    return map;
+  }
+}
+
+class GetRiichiBarScoreRequest {
+  GetRiichiBarScoreRequest(this.state, this.requester, this.targetPeerIds,
+      this.numberOfRemainRiichiBars);
+
+  factory GetRiichiBarScoreRequest.fromJsonMap(Map<String, dynamic> map) {
+    return GetRiichiBarScoreRequest(
+        map["state"] as String,
+        map["requester"] as String,
+        _toListString(map["targetPeerIds"]),
+        map["numberOfRemainRiichiBars"] as int);
+  }
+
+  final String state; // このリクエストが出されたときのテーブルステート
+  final String requester;
+  final List<String> targetPeerIds;
+  final int numberOfRemainRiichiBars;
+
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{};
+    map["state"] = state;
+    map["requester"] = requester;
+    map["targetPeerIds"] = targetPeerIds;
+    map["numberOfRemainRiichiBars"] = numberOfRemainRiichiBars;
     return map;
   }
 }
@@ -186,6 +222,7 @@ class TableState {
       "waitingNextHandForPreviousLeader";
   static const waitingNextHandForContinueLeader =
       "waitingNextHandForContinueLeader";
+  static const waitingGetRiichiBarScore = "waitingGetRiichiBarScore";
   static const waitingGameReset = "waitingGameReset";
 }
 
@@ -196,6 +233,8 @@ class TableData {
   int leaderChangeCount = -1; // 局数: 0~3:東場, 4~7:南場,
   int leaderContinuousCount = 0; // 場数（親継続数）
   int remainRiichiBarCounts = 0; // リーチ供託棒数
+  String lastWinner = "";
+  GetRiichiBarScoreRequest? getRiichiBarScoreRequest;
 
   // 局中関連
   String state = TableState.notSetup;
@@ -207,7 +246,8 @@ class TableData {
   int lastDiscardedTile = -1;
   String lastDiscardedPlayerPeerID = "";
   int countOfKan = 0;
-  String justCalledClosedKanTilesId = ""; // 暗槓された牌のID。打牌するまで、暗槓の両端を表側で表示するために使う。
+  String justCalledClosedKanTilesId =
+      ""; // 暗槓された牌のID。打牌するまで、暗槓の両端を表側で表示するために使う。
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
@@ -217,6 +257,8 @@ class TableData {
 
     map["leaderChangeCount"] = leaderChangeCount;
     map["leaderContinuousCount"] = leaderContinuousCount;
+    map["remainRiichiBarCounts"] = remainRiichiBarCounts;
+    map["lastWinner"] = lastWinner;
 
     map["state"] = state;
     map["turnedPeerId"] = turnedPeerId;
@@ -228,6 +270,9 @@ class TableData {
     map["lastDiscardedTile"] = lastDiscardedTile;
     map["lastDiscardedPlayerPeerID"] = lastDiscardedPlayerPeerID;
     map["countOfKan"] = countOfKan;
+    map["getRiichiBarScoreRequest"] = getRiichiBarScoreRequest == null
+        ? <String, dynamic>{}
+        : getRiichiBarScoreRequest!.toMap();
 
     return map;
   }
@@ -239,6 +284,8 @@ class TableData {
         .map((key, value) => MapEntry(key, value as String));
     leaderChangeCount = map["leaderChangeCount"] as int;
     leaderContinuousCount = map["leaderContinuousCount"] as int;
+    remainRiichiBarCounts = map["remainRiichiBarCounts"] as int;
+    lastWinner = map["lastWinner"] as String;
 
     state = map["state"] as String;
     turnedPeerId = map["turnedPeerId"] as String;
@@ -250,6 +297,13 @@ class TableData {
     lastDiscardedTile = map["lastDiscardedTile"] as int;
     lastDiscardedPlayerPeerID = map["lastDiscardedPlayerPeerID"] as String;
     countOfKan = map["countOfKan"] as int;
+
+    final tmp = map["getRiichiBarScoreRequest"] as Map<String, dynamic>;
+    if (tmp.isEmpty) {
+      getRiichiBarScoreRequest = null;
+    } else {
+      getRiichiBarScoreRequest = GetRiichiBarScoreRequest.fromJsonMap(tmp);
+    }
   }
 
   List<String> idList() {
@@ -301,8 +355,7 @@ class Table extends TableData {
 
     // メンバーの順番を乱数でシャッフルする。
     final shuffled = <String, String>{}; // <Peer ID, Player Name>
-    for (final id in member.keys.toList()
-      ..shuffle()) {
+    for (final id in member.keys.toList()..shuffle()) {
       shuffled[id] = member[id]!;
     }
 
@@ -351,6 +404,7 @@ class Table extends TableData {
     playerDataMap
       ..clear()
       ..addAll(newMap);
+    lastWinner = lastWinner == oldPeerId ? peerId : lastWinner;
     print("handleReplacePeerId: playerDataMap: ${playerDataMap}");
     // 局中関連
     turnedPeerId = turnedPeerId == oldPeerId ? peerId : turnedPeerId;
@@ -377,8 +431,17 @@ class Table extends TableData {
     lastDiscardedPlayerPeerID = "";
     countOfKan = 0;
 
+    //　リーチ棒の精算
+    for (final data in playerDataMap.values) {
+      if (data.existRiichiBar) {
+        data.existRiichiBar = false;
+        remainRiichiBarCounts += 1;
+        data.score -= 1000;
+      }
+    }
+
     for (final v in playerDataMap.values) {
-      v.clearTiles();
+      v.clearState();
     }
 
     final allTiles = _createShuffledTiles();
@@ -434,22 +497,14 @@ class Table extends TableData {
     _updateTableListener("_onDrawGame1");
     await Future.delayed(const Duration(seconds: 1));
 
-    //　リーチ棒の精算
-    for (final data in playerDataMap.values) {
-      if (data.riichiTile.isNotEmpty) {
-        remainRiichiBarCounts += 1;
-        data.score -= 1000;
-      }
-    }
-
     state = TableState.processingFinishHand;
     _updateTableListener("_onDrawGame2");
   }
 
   _checkState(String peerId,
       {bool needMyTurn = false,
-        bool needNotMyTurn = false,
-        List<String> allowTableState = const []}) {
+      bool needNotMyTurn = false,
+      List<String> allowTableState = const []}) {
     final data = playerData(peerId);
     if (data == null) {
       throw StateError("No Player(${peerId}) data.");
@@ -535,6 +590,7 @@ class Table extends TableData {
         needMyTurn: true, allowTableState: [TableState.waitToDiscard]);
     final data = playerData(peerId)!;
     data.riichiTile.add(tile);
+    data.existRiichiBar = true;
     handleDiscardTile(peerId: peerId, tile: tile);
   }
 
@@ -562,16 +618,7 @@ class Table extends TableData {
       TableState.called
     ]);
 
-    //　リーチ棒の精算
-    for (final data in playerDataMap.values) {
-      if (data.riichiTile.isNotEmpty) {
-        remainRiichiBarCounts += 1;
-        data.score -= 1000;
-      }
-    }
-    playerData(turnedPeerId)!.score += remainRiichiBarCounts * 1000;
-    remainRiichiBarCounts = 0;
-
+    lastWinner = peerId;
     state = TableState.processingFinishHand;
     _updateTableListener("handleWin");
   }
@@ -626,7 +673,8 @@ class Table extends TableData {
 
     final data = playerData(peerId)!;
     // 鳴き牌登録
-    final calledTiles = CalledTiles(-1, peerId, _toListInt(selectedTiles), "close-kan");
+    final calledTiles =
+        CalledTiles(-1, peerId, _toListInt(selectedTiles), "close-kan");
     data.calledTiles.add(calledTiles);
     justCalledClosedKanTilesId = calledTiles.id();
 
@@ -645,9 +693,10 @@ class Table extends TableData {
     _updateTableListener("handleCloseKan");
   }
 
-  handleLateKan({required String peerId,
-    required int tile,
-    required int calledTilesIndex}) {
+  handleLateKan(
+      {required String peerId,
+      required int tile,
+      required int calledTilesIndex}) {
     if (countOfKan >= 4) {
       throw RefuseException("Already kan has been called 4 times.");
     }
@@ -679,8 +728,8 @@ class Table extends TableData {
     _updateTableListener("handleLateKan");
   }
 
-  void _setSelectedTiles(String peerId, List<int> selectedTiles,
-      String callAs) {
+  void _setSelectedTiles(
+      String peerId, List<int> selectedTiles, String callAs) {
     // 鳴き牌を持ち牌から除外
     final data = playerData(peerId)!;
     for (final tile in selectedTiles) {
@@ -703,8 +752,102 @@ class Table extends TableData {
     _updateTableListener("handleOpenTiles");
   }
 
+  handleGetRiichiBarScoreAll({required String peerId}) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.processingFinishHand,
+    ]);
+
+    //　リーチ棒の精算
+    for (final data in playerDataMap.values) {
+      if (data.existRiichiBar) {
+        data.existRiichiBar = false;
+        data.score -= 1000;
+        playerData(peerId)!.score += 1000;
+      }
+    }
+    playerData(peerId)!.score += remainRiichiBarCounts * 1000;
+    remainRiichiBarCounts = 0;
+    _updateTableListener("handleGetRiichiBarScoreAll");
+  }
+
+  /*
+  handleRequestGetRiichiBarScore({
+    required String peerId,
+    required List<String> targetPeerIds,
+    required int numberOfRemainRiichiBars,
+  }) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.processingFinishHand,
+      TableState.drawable
+    ]);
+    for (final targetPeerIds in targetPeerIds) {
+      if (playerDataMap[targetPeerIds] == null) {
+        throw StateError("Not target peer id in player data map.");
+      }
+    }
+    if (remainRiichiBarCounts - numberOfRemainRiichiBars < 0) {
+      throw StateError("remainRiichiBarCounts - numberOfRemainRiichiBars < 0");
+    }
+
+    getRiichiBarScoreRequest = GetRiichiBarScoreRequest(
+        state, peerId, targetPeerIds, numberOfRemainRiichiBars);
+    state = TableState.waitingGetRiichiBarScore;
+    _updateTableListener("handleGetRiichiBarScore_apply");
+  }
+
+  handleAcceptGetRiichiBarScore({required String peerId}) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.waitingGetRiichiBarScore,
+    ]);
+    if (getRiichiBarScoreRequest == null) {
+      throw StateError("getRiichiBarScoreRequest is null.");
+    }
+
+    final data = playerData(peerId)!;
+    data.acceptedGetRiichiBarScore = true;
+
+    var count = 0;
+    for (final v in playerDataMap.values) {
+      count += v.acceptedGetRiichiBarScore ? 1 : 0;
+    }
+
+    if (count == 4) {
+      //　リーチ棒の精算
+      for (final targetPeerIds in getRiichiBarScoreRequest!.targetPeerIds) {
+        final data = playerDataMap[targetPeerIds]!;
+        if (data.riichiTile.isNotEmpty) {
+          data.riichiTile.clear();
+          data.score -= 1000;
+          playerData(getRiichiBarScoreRequest!.requester)!.score += 1000;
+        }
+      }
+      state = getRiichiBarScoreRequest!.state;
+    }
+    _updateTableListener("handleAcceptGetRiichiBarScore");
+  }
+
+  handleRefuseGetRiichiBarScore({required String peerId}) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.waitingGetRiichiBarScore,
+    ]);
+    if (getRiichiBarScoreRequest == null) {
+      throw StateError("getRiichiBarScoreRequest is null.");
+    }
+
+    for (final data in playerDataMap.values) {
+      data.acceptedGetRiichiBarScore = false;
+    }
+    state = getRiichiBarScoreRequest!.state;
+    _updateTableListener("handleRefuseGetRiichiBarScore");
+  }
+   */
+
   handleRequestScore(
       {required String peerId, required Map<String, dynamic> request}) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.waitingGetRiichiBarScore,
+    ]);
+
     for (final e in request.entries) {
       final data = playerData(e.key)!;
       data.requestingScoreFrom[peerId] = e.value; // Score
@@ -841,7 +984,7 @@ class Table extends TableData {
     print("handleAcceptGameReset: waitingPlayerCount=${waitingPlayerCount}");
     if (waitingPlayerCount == 4) {
       final member =
-      playerDataMap.map((key, value) => MapEntry(key, value.name));
+          playerDataMap.map((key, value) => MapEntry(key, value.name));
       print("handleAcceptGameReset: member=${member}");
       startGame(member);
       nextLeader();
