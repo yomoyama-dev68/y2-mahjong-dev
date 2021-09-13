@@ -58,7 +58,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   void onChangeGameState(game.GameState oldState, game.GameState newState) {
     print("onChangeGameState: ${_game.myPeerId}: $oldState, $newState");
-    if (newState == game.GameState.onSettingMyName) {
+    if (oldState == game.GameState.onJoiningRoom &&
+        newState == game.GameState.onSettingMyName) {
       _setMyName();
     }
     if (newState == game.GameState.onNeedRejoin) {
@@ -94,12 +95,6 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         showGetRiichiBarScoreDialogAll(context, _game);
       }
     }
-
-    const waitToDiscards = [
-      tbl.TableState.waitToDiscard,
-      tbl.TableState.waitToDiscardForPongOrChow,
-      tbl.TableState.waitToDiscardForOpenOrLateKan
-    ];
   }
 
   void onChangeGameTableData(String updatedFor) {
@@ -132,6 +127,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   void onEventGameTable(String event) {
     if (event == "onMyTurned") {}
+    setState(() {});
   }
 
   void onReceiveCommandResult(CommandResult result) {

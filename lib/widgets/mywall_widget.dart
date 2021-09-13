@@ -20,48 +20,93 @@ class MyWallWidgetState extends State<MyWallWidget> {
   }
 
   @override
+  void initState() {
+    widget.gameData.onChangeMyTurnTempState = _onChangeMyTurnTempState;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _buildMyWall();
   }
 
   Widget _buildMyWall() {
+    final tappable = _isTappableState();
+
     final selectingTiles = g().myTurnTempState.selectingTiles;
     final myData = g().table.playerData(g().myPeerId)!;
     final widgets = <Widget>[];
+    final builder = tappable ? _buildTile : _buildDisabledTile;
+
+    // 持ち牌
     for (final tile in myData.tiles) {
-      widgets.add(_buildTile(tile, selectingTiles.contains(tile)));
+      widgets.add(builder(tile, selectingTiles.contains(tile)));
     }
+    // ツモ牌
     if (myData.drawnTile.isNotEmpty) {
       widgets.add(const SizedBox(width: (33 / 0.8) / 2));
       final tile = myData.drawnTile.first;
-      widgets.add(_buildTile(tile, selectingTiles.contains(tile)));
+      widgets.add(builder(tile, selectingTiles.contains(tile)));
     }
 
+    final row = Row(
+      children: widgets,
+    );
+    final content = tappable
+        ? Material(child: row)
+        : Opacity(
+            opacity: 0.5,
+            child: row,
+          );
+
     return SingleChildScrollView(
-        child: Row(
-          children: widgets,
-        ),
-        scrollDirection: Axis.horizontal);
+        child: content, scrollDirection: Axis.horizontal);
+  }
+
+  Widget _buildDisabledTile(int tile, bool _) {
+    const scale = 0.8;
+    return SizedBox(
+      child: getTileImage(tile),
+      height: 59.0 / scale,
+      width: 33.0 / scale,
+    );
   }
 
   Widget _buildTile(int tile, bool selecting) {
     const scale = 0.8;
-    return Material(
-        child: Container(
-            child: Ink.image(
-              image: getTileImage(tile).image,
-              height: 59.0 / scale,
-              width: 33.0 / scale,
-              child: InkWell(
-                onTap: () => _onTapTile(tile),
-                child: const SizedBox(),
-              ),
-            ),
-            decoration: selecting
-                ? BoxDecoration(
-                    border: Border.all(color: Colors.red),
-                  )
-                : null));
+    return Container(
+        child: Ink.image(
+          image: getTileImage(tile).image,
+          height: 59.0 / scale,
+          width: 33.0 / scale,
+          child: InkWell(
+            onTap: () => _onTapTile(tile),
+            child: const SizedBox(),
+          ),
+        ),
+        decoration: selecting
+            ? BoxDecoration(
+                border: Border.all(color: Colors.red),
+              )
+            : null);
+  }
+
+  bool _isTappableState() {
+    int limit = g().selectableTilesQuantity();
+    if (limit > 0) {
+      return true;
+    }
+    if ([
+      tbl.TableState.waitToDiscard,
+      tbl.TableState.waitToDiscardForPongOrChow,
+      tbl.TableState.waitToDiscardForOpenOrLateKan,
+    ].contains(g().table.state)) {
+      return true;
+    }
+    return false;
+  }
+
+  void _onChangeMyTurnTempState() {
+    setState(() {});
   }
 
   void _onTapTile(int tile) {
@@ -109,7 +154,7 @@ class MyWallWidgetState extends State<MyWallWidget> {
     }
   }
 
-  Image getTileImage(int tile, [direction=4]) {
+  Image getTileImage(int tile, [direction = 4]) {
     // direction = 0: 打牌(上向, 1: 打牌(左向, 2: 打牌(下向, 3: 打牌(右向, 4: 自牌(上向,
     final info = tbl.TileInfo(tile);
     final key = "${info.type}_${info.number}_${direction}";

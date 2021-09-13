@@ -130,7 +130,7 @@ class TradingScoreRequestWidgetState extends State<TradingScoreRequestWidget> {
     assert(scrollableState != null);
 
     print("scrollableState!.position=${scrollableState!.position}");
-    ScrollPosition position = scrollableState!.position;
+    ScrollPosition position = scrollableState.position;
     double alignment;
     if (position.pixels > viewport.getOffsetToReveal(object, 0.0).offset) {
       alignment = 0.0;

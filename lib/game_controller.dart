@@ -92,6 +92,7 @@ class Game {
   String lastTurnedPeerId = "";
   final myTurnTempState = MyTurnTempState();
   Function()? onChangeSelectingTiles;
+  Function()? onChangeMyTurnTempState;
 
   GameState state = GameState.onCreatingMyPeer;
 
@@ -231,6 +232,7 @@ class Game {
           args: {"tile": tile}));
     }
     myTurnTempState.clear();
+    onChangeMyTurnTempState?.call();
   }
 
   Future<void> call() async {
@@ -239,16 +241,19 @@ class Game {
 
   Future<void> callRon() async {
     myTurnTempState.onCalledRon = true;
+    onChangeMyTurnTempState?.call();
     _handleCommandResult(await _handleCmd("handleCall", myPeerId));
   }
 
   Future<void> cancelCall() async {
     myTurnTempState.clear();
+    onChangeMyTurnTempState?.call();
     _handleCommandResult(await _handleCmd("handleCancelCall", myPeerId));
   }
 
   Future<void> win() async {
     myTurnTempState.clear();
+    onChangeMyTurnTempState?.call();
     _handleCommandResult(await _handleCmd("handleWin", myPeerId));
   }
 
@@ -268,20 +273,24 @@ class Game {
       _handleCommandResult(await _handleCmd("handlePongOrChow", myPeerId,
           args: {"selectedTiles": selectedTiles}));
       myTurnTempState.clear();
+      onChangeMyTurnTempState?.call();
     }
     if (calledFor == "openKan") {
       _handleCommandResult(await _handleCmd("handleOpenKan", myPeerId,
           args: {"selectedTiles": selectedTiles}));
       myTurnTempState.clear();
+      onChangeMyTurnTempState?.call();
     }
     if (calledFor == "closeKan") {
       _handleCommandResult(await _handleCmd("handleCloseKan", myPeerId,
           args: {"selectedTiles": selectedTiles}));
       myTurnTempState.clear();
+      onChangeMyTurnTempState?.call();
     }
 
     if (calledFor == "lateKanStep1") {
       myTurnTempState.onCalledFor = "lateKanStep2";
+      onChangeMyTurnTempState?.call();
       print("calledFor == lateKanStep1");
       onChangeGameTableData("lateKanStep2");
     }
@@ -294,43 +303,53 @@ class Game {
         "calledTilesIndex": calledTilesIndex
       }));
       myTurnTempState.clear();
+      onChangeMyTurnTempState?.call();
     }
   }
 
   void pong() {
     myTurnTempState.onCalledFor = "pongOrChow";
+    onChangeMyTurnTempState?.call();
   }
 
   void chow() {
     myTurnTempState.onCalledFor = "pongOrChow";
+    onChangeMyTurnTempState?.call();
   }
 
   void openKan() {
     myTurnTempState.onCalledFor = "openKan";
+    onChangeMyTurnTempState?.call();
   }
 
   void closeKan() {
     myTurnTempState.onCalledFor = "closeKan";
+    onChangeMyTurnTempState?.call();
   }
 
   void lateKan() {
     myTurnTempState.onCalledFor = "lateKanStep1";
+    onChangeMyTurnTempState?.call();
   }
 
   void riichi() async {
     myTurnTempState.onCalledRiichi = true;
+    onChangeMyTurnTempState?.call();
   }
 
   void cancelRiichi() async {
     myTurnTempState.onCalledRiichi = false;
+    onChangeMyTurnTempState?.call();
   }
 
   void tsumo() {
     myTurnTempState.onCalledTsumo = true;
+    onChangeMyTurnTempState?.call();
   }
 
   void cancelTsumo() {
     myTurnTempState.onCalledTsumo = false;
+    onChangeMyTurnTempState?.call();
   }
 
   Future<void> openMyWall() async {
@@ -448,6 +467,7 @@ class Game {
   void _skyWayOnPeerLeave(String peerId) {
     print("_skyWayOnPeerLeave: $peerId");
     myTurnTempState.clear();
+    onChangeMyTurnTempState?.call();
     final name = member.remove(peerId);
     lostPlayerNames[name!] = peerId;
     _setState(GameState.onWaitingOtherPlayersInGame);
