@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:web_app_sample/widgets/trading_score_widget.dart';
+import 'package:web_app_sample/dialogs/trading_score_dialog.dart';
 import 'dart:ui' as ui;
 
 import '../game_controller.dart' as game;

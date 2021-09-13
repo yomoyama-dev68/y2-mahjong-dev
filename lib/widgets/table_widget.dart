@@ -4,7 +4,7 @@ import 'package:web_app_sample/widgets/player_state_tile.dart';
 import 'package:web_app_sample/resources/sound_loader.dart';
 import 'package:web_app_sample/widgets/stage_info_widget.dart';
 import 'package:web_app_sample/resources/image_loader.dart';
-import 'package:web_app_sample/widgets/trading_score_widget.dart';
+import 'package:web_app_sample/dialogs/trading_score_dialog.dart';
 import 'dart:ui' as ui;
 
 import 'called_tiles_widget.dart';
