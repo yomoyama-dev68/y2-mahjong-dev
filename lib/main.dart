@@ -32,6 +32,7 @@ class MyApp extends StatelessWidget {
       onGenerateRoute: RouteGenerator.generateRoute,
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        fontFamily: "Noto Sans JP",
       ),
       home: FirstWidget(roomId: const Uuid().v4()),
     );

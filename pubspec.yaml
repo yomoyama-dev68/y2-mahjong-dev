@@ -97,3 +97,6 @@ flutter:
     - family: Hkkaikk
       fonts:
         - asset: assets/fonts/hkkaikk.ttf
+    - family: Noto Sans JP
+      fonts:
+        - asset: assets/fonts/NotoSansJP-Regular.otf
