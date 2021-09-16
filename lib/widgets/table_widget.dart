@@ -7,6 +7,7 @@ import 'package:web_app_sample/resources/image_loader.dart';
 import 'package:web_app_sample/dialogs/trading_score_dialog.dart';
 import 'dart:ui' as ui;
 
+import 'actions_bar_widget.dart';
 import 'called_tiles_widget.dart';
 import '../commad_handler.dart';
 import '../game_controller.dart' as game;
@@ -234,39 +235,17 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           )));
     }
 
-    final widgets = <Widget>[];
-    widgets.add(Stack(
-      children: stacks,
-      alignment: Alignment.center,
-    ));
-    const widgetH = (49 * 2 - 16.0) / tappableTileScale;
-    late Widget tilesWidget;
-
-    print("buildBody: _game.state: ${_game.state}");
-    print("buildBody: _game.member: ${_game.member}");
-    print("buildBody: _game.lostPlayerNames: ${_game.lostPlayerNames}");
-    print("buildBody: _game.table.state: ${_game.table.state}");
-    print("buildBody: _game.myPeerId: ${_game.myPeerId}");
-    print("buildBody: _game.table.playerDataMap: ${_game.table.playerDataMap}");
-
-    if (_game.myTurnTempState.onCalledFor == "lateKanStep2") {
-      tilesWidget = MyCalledTilesWidget(
-        gameData: _game,
-        imageMap: _imageMap,
-      );
-    } else {
-      tilesWidget = MyWallWidget(
-        gameData: _game,
-        imageMap: _imageMap,
-      );
-    }
-    widgets
-        .add(SizedBox(width: tableSize, height: widgetH, child: tilesWidget));
-
-    widgets.add(SizedBox(
-      width: tableSize,
-      child: TableRibbonWidget(gameData: _game),
-    ));
+    final widgets = <Widget>[
+      Stack(
+        children: stacks,
+        alignment: Alignment.center,
+      ),
+      ActionsBarWidget(
+          gameData: _game,
+          imageMap: _imageMap,
+          tableSize: tableSize,
+          tappableTileScale: tappableTileScale)
+    ];
 
     return Column(
       children: widgets,

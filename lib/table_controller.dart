@@ -90,7 +90,6 @@ class PlayerData {
     data.discardedTiles.addAll(_toListInt(map["discardedTiles"]));
     data.calledTiles.addAll(_toListCalledTiles(map["calledTiles"]));
     data.calledTilesByOther.addAll(_toListInt(map["calledTilesByOther"]));
-    data.calledTilesByOther.addAll(_toListInt(map["calledTilesByOther"]));
     data.riichiTile.addAll(_toListInt(map["riichiTile"]));
 
     return data;

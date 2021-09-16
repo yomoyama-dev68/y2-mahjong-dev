@@ -22,16 +22,20 @@ class MyCalledTilesWidgetState extends State<MyCalledTilesWidget> {
   }
 
   @override
+  void initState() {
+    widget.gameData.onChangeMyTurnTempState = _onChangeMyTurnTempState;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _buildMyCalledTilesList();
   }
 
   Widget _buildMyCalledTilesList() {
-    final selectingTiles = g().myTurnTempState.selectingTiles;
     final myData = g().table.playerData(g().myPeerId)!;
     final widgets = <Widget>[];
     widgets.add(const SizedBox(width: (33 / 0.8) / 2));
-    for (var index = 0; index < myData.calledTiles.length; index++) {
+    for (var index = myData.calledTiles.length - 1; index >= 0; index--) {
       widgets.add(_buildCalledTiles(index, myData.calledTiles[index]));
       widgets.add(const SizedBox(width: (33 / 0.8) / 2));
     }
@@ -48,7 +52,7 @@ class MyCalledTilesWidgetState extends State<MyCalledTilesWidget> {
         TilesPainter.createCalledTileDirectionMap(
             g().myPeerId, tiles, 0, g().table);
 
-    final offsetH = (49 - 16.0) / 0.8;
+    const offsetH = (49 - 16.0) / 0.8;
     final widgets = <Widget>[];
     final fromOtherTiles = <Widget>[];
     for (final map in calledTileDirectionMap.reversed) {
@@ -71,15 +75,25 @@ class MyCalledTilesWidgetState extends State<MyCalledTilesWidget> {
     }
     const widgetH = (49 * 2 - 16.0) / 0.8;
 
-    return GestureDetector(
-        onTap: () => _onTapTile(index),
-        child: Container(
-            color: _isSelected(index) ? Colors.orange : null,
-            height: widgetH,
-            child: Row(
-              children: widgets,
-              crossAxisAlignment: CrossAxisAlignment.end,
-            )));
+    final tappable = (tiles.selectedTiles.length == 2);
+    final content = Container(
+        color: _isSelected(index) ? Colors.orange : null,
+        height: widgetH,
+        child: Row(
+          children: widgets,
+          crossAxisAlignment: CrossAxisAlignment.end,
+        ));
+
+    return tappable
+        ? GestureDetector(onTap: () => _onTapTile(index), child: content)
+        : Opacity(
+            opacity: 0.5,
+            child: content,
+          );
+  }
+
+  void _onChangeMyTurnTempState() {
+    setState(() {});
   }
 
   void _onTapTile(int calledTilesIndex) {

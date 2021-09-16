@@ -21,11 +21,6 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   var globalKey2 = GlobalKey();
   var globalKey3 = GlobalKey();
 
-  @override
-  void initState() {
-    widget.gameData.onChangeSelectingTiles = _onChangeSelectingTiles;
-  }
-
   game.Game g() {
     return widget.gameData;
   }
@@ -286,9 +281,5 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       showChangeLeaderContinuousCountDialog(context, g());
     }
     if (menu == "drawGame") g().requestDrawGame();
-  }
-
-  void _onChangeSelectingTiles(){
-    setState(() {});
   }
 }

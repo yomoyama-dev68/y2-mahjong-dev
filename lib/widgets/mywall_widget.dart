@@ -91,6 +91,10 @@ class MyWallWidgetState extends State<MyWallWidget> {
   }
 
   bool _isTappableState() {
+    if (!g().isMyTurn()) {
+      return false;
+    }
+
     int limit = g().selectableTilesQuantity();
     if (limit > 0) {
       return true;
