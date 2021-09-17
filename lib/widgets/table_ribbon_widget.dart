@@ -148,10 +148,17 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       ];
     }
     if (g().myTurnTempState.onCalledFor == "lateKanStep2") {
-      return [
-        _buildButtonForCallCmd("キャンセル", g().cancelCall),
-        _buildButtonForCallCmd("OK", g().setSelectedTiles),
-      ];
+      if (g().myTurnTempState.selectedCalledTilesIndexForLateKan < 0) {
+        return [
+          _buildButtonForCallCmd("キャンセル", g().cancelCall),
+          _buildButtonForCallCmd("OK", null),
+        ];
+      } else {
+        return [
+          _buildButtonForCallCmd("キャンセル", g().cancelCall),
+          _buildButtonForCallCmd("OK", g().setSelectedTiles),
+        ];
+      }
     }
     if (g().selectableTilesQuantity() > 0) {
       final remainTiles = g().selectableTilesQuantity() - g().myTurnTempState.selectingTiles.length;

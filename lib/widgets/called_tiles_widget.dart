@@ -99,6 +99,7 @@ class MyCalledTilesWidgetState extends State<MyCalledTilesWidget> {
   void _onTapTile(int calledTilesIndex) {
     setState(() {
       g().myTurnTempState.selectedCalledTilesIndexForLateKan = calledTilesIndex;
+      g().onChangeSelectingTiles?.call();
     });
   }
 
