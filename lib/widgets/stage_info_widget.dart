@@ -75,7 +75,7 @@ class StageInfoWidget extends StatelessWidget {
                       Column(mainAxisSize: MainAxisSize.min, children: [
                         Row(mainAxisSize: MainAxisSize.min, children: [
                           imageMap["bar_leader_continuous_count_mini"]!,
-                          Text("×${leaderContinuousCount}",
+                          Text("x${leaderContinuousCount}",
                               style: contentTextStyle),
                         ]),
                         Row(mainAxisSize: MainAxisSize.min, children: [
