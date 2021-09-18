@@ -2,6 +2,10 @@ import 'package:js/js.dart';
 import 'package:uuid/uuid.dart';
 import 'skyway_stab.dart' as stab;
 
+
+@JS('setupLocalAudio')
+external void _setupLocalAudio(Function(bool, String) onSetupLocalAudio);
+
 @JS('newPeer')
 external void _newPeer(String key, int debug, Function(String) onOpenCallback);
 
@@ -27,6 +31,10 @@ class SkyWayHelper {
 
   final bool useStab;
   final peerId = const Uuid().v4();
+
+  void setupLocalAudio(Function(bool, String) onSetupLocalAudio) {
+    _setupLocalAudio(allowInterop(onSetupLocalAudio));
+  }
 
   void newPeer(String key, int debug, Function(String) onOpenCallback) {
     if (useStab) {

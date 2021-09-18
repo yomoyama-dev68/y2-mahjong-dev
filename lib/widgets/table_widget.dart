@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:web_app_sample/dialogs/get_riichi_bar_score_dialog.dart';
+import 'package:web_app_sample/dialogs/notify_dialog.dart';
 import 'package:web_app_sample/widgets/player_state_tile.dart';
 import 'package:web_app_sample/resources/sound_loader.dart';
 import 'package:web_app_sample/widgets/stage_info_widget.dart';
@@ -54,7 +55,14 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         onChangeGameTableData: onChangeGameTableData,
         onRequestScore: onRequestScore,
         onEventGameTable: onEventGameTable,
-        onReceiveCommandResult: onReceiveCommandResult);
+        onReceiveCommandResult: onReceiveCommandResult,
+        onSetupLocalAudio: onSetupLocalAudio);
+  }
+
+  void onSetupLocalAudio(bool enabled, String message) {
+    if (!enabled) {
+      showNotifyDialog(context, "マイクを発見できませんでした。(${message})");
+    }
   }
 
   void onChangeGameState(game.GameState oldState, game.GameState newState) {

@@ -39,37 +39,42 @@ class MyTurnTempState {
 }
 
 class Game {
-  Game(
-      {required this.roomId,
-      required this.onChangeGameState,
-      required this.onChangeMember,
-      required this.onChangeGameTableState,
-      required this.onRequestScore,
-      required this.onEventGameTable,
-      required this.onChangeGameTableData,
-      required this.onReceiveCommandResult}) {
+  Game({required this.roomId,
+    required this.onChangeGameState,
+    required this.onChangeMember,
+    required this.onChangeGameTableState,
+    required this.onRequestScore,
+    required this.onEventGameTable,
+    required this.onChangeGameTableData,
+    required this.onReceiveCommandResult,
+    required this.onSetupLocalAudio}) {
     print("Game:Game():1");
     table = Table(_tableOnUpdateTable);
     print("Game:Game():2");
     oldTableData = table.toMap();
     print("Game:Game():3");
-    skyWay.newPeer(skyWayKey, 3, (peerId) {
-      print("Game:Game():4: ${peerId}");
-      _commandHandler = CommandHandler(skyWay);
-      print("Game:Game():5");
-      myPeerId = peerId;
-      _setState(GameState.onJoiningRoom);
-      print("Game:Game():6");
-      skyWay.joinRoom(
-          roomId,
-          roomMode,
-          _skyWayOnOpen,
-          _skyWayOnPeerJoin,
-          _skyWayOnStreamCallback,
-          _skyWayOnData,
-          _skyWayOnPeerLeave,
-          _skyWayOnClose);
-      print("Game:Game():7");
+    skyWay.setupLocalAudio((enabled, message) {
+      print("Game:Game():3-1");
+      onSetupLocalAudio(enabled, message);
+      print("Game:Game():3-2");
+      skyWay.newPeer(skyWayKey, 3, (peerId) {
+        print("Game:Game():4: ${peerId}");
+        _commandHandler = CommandHandler(skyWay);
+        print("Game:Game():5");
+        myPeerId = peerId;
+        _setState(GameState.onJoiningRoom);
+        print("Game:Game():6");
+        skyWay.joinRoom(
+            roomId,
+            roomMode,
+            _skyWayOnOpen,
+            _skyWayOnPeerJoin,
+            _skyWayOnStreamCallback,
+            _skyWayOnData,
+            _skyWayOnPeerLeave,
+            _skyWayOnClose);
+        print("Game:Game():7");
+      });
     });
   }
 
@@ -82,6 +87,7 @@ class Game {
   final Function onEventGameTable;
   final Function(String) onChangeGameTableData;
   final Function(CommandResult) onReceiveCommandResult;
+  final Function(bool, String) onSetupLocalAudio;
 
   final member = <String, String>{}; // <Peer ID, Player Name>
   final lostPlayerNames = <String, String>{}; // <Player Name, Peer ID>
@@ -496,7 +502,9 @@ class Game {
       print(
           "notifyMember: myPeerId=${myPeerId}, member=${member}, lostMember=${lostMember}");
       print(
-          "notifyMember: lostMember.isNotEmpty=${lostMember.isNotEmpty}, !member.containsKey(myPeerId)=${!member.containsKey(myPeerId)}");
+          "notifyMember: lostMember.isNotEmpty=${lostMember
+              .isNotEmpty}, !member.containsKey(myPeerId)=${!member.containsKey(
+              myPeerId)}");
       if (lostMember.isNotEmpty && !member.containsKey(myPeerId)) {
         lostPlayerNames
           ..clear()
@@ -544,8 +552,8 @@ class Game {
     }
   }
 
-  void _notifyUpdatedTableData(
-      Map<String, dynamic> oldData, Map<String, dynamic> newData) {
+  void _notifyUpdatedTableData(Map<String, dynamic> oldData,
+      Map<String, dynamic> newData) {
     print("_notifyUpdatedTableData: ${myPeerId}");
     if (oldData["state"] != newData["state"]) {
       onChangeGameTableState(oldData["state"], newData["state"]);
