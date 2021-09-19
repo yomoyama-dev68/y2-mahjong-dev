@@ -9,6 +9,7 @@ class NameSetDialog extends StatefulWidget {
   final String name;
 
   static Future<String?> show(BuildContext context, String currentName) {
+
     final dialog = NameSetDialog(name: currentName);
     return showDialog(
       context: context,
@@ -29,12 +30,19 @@ class NameSetDialog extends StatefulWidget {
   State createState() => NameSetDialogState();
 }
 
+
 class NameSetDialogState extends State<NameSetDialog> {
   final _textController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> actions = [
+      ElevatedButton(
+        child: const Text("観戦者として参加"),
+        onPressed: () {
+          Navigator.pop<String>(context, "asAudience");
+        },
+      ),
       ElevatedButton(
         child: const Text("OK"),
         onPressed: () {
@@ -75,6 +83,13 @@ class RejoinNameSelectDialog {
         child: Text(name),
       ));
     }
+    widgets.add(SimpleDialogOption(
+      onPressed: () {
+        Navigator.pop(context, "asAudience");
+      },
+      child: Text("観戦者"),
+    ));
+
 
     return showDialog(
       context: context,

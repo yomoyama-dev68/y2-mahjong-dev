@@ -92,6 +92,10 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   }
 
   List<Widget> buildActionButtons() {
+    if (g().isAudience) {
+      return _buildForAudience();
+    }
+
     final tblState = g().table.state;
 
     if (tblState == tbl.TableState.notSetup ||
@@ -129,6 +133,16 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     ];
   }
 
+  List<Widget> _buildForAudience() {
+    final widgets = <Widget>[];
+    for (final player in g().member.entries) {
+      widgets.add(_buildButtonForCallCmd(player.value, () {
+        g().setAudienceAs(player.key);
+      }));
+    }
+    return widgets;
+  }
+
   List<Widget> _buildForMyTurn() {
     if (g().myTurnTempState.onCalledRiichi) {
       return [
@@ -161,7 +175,8 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       }
     }
     if (g().selectableTilesQuantity() > 0) {
-      final remainTiles = g().selectableTilesQuantity() - g().myTurnTempState.selectingTiles.length;
+      final remainTiles = g().selectableTilesQuantity() -
+          g().myTurnTempState.selectingTiles.length;
       if (remainTiles == 0) {
         return [
           _buildButtonForCallCmd("キャンセル", g().cancelCall),

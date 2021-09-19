@@ -37,14 +37,21 @@ class ActionsBarWidgetState extends State<ActionsBarWidget> {
   @override
   Widget build(BuildContext context) {
     final widgetH = (49 * 2 - 16.0) / widget.tappableTileScale;
-    return Column(children: [
-      SizedBox(
-          width: widget.tableSize, height: widgetH, child: _buildTilesWidget()),
-      SizedBox(
-        width: widget.tableSize,
-        child: TableRibbonWidget(gameData: g()),
-      )
-    ]);
+    final widgets = <Widget>[];
+    if (!g().isAudience) {
+      widgets.add(
+        SizedBox(
+            width: widget.tableSize,
+            height: widgetH,
+            child: _buildTilesWidget()),
+      );
+    }
+    widgets.add(SizedBox(
+      width: widget.tableSize,
+      child: TableRibbonWidget(gameData: g()),
+    ));
+
+    return Column(children: widgets);
   }
 
   Widget _buildTilesWidget() {

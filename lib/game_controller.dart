@@ -39,15 +39,16 @@ class MyTurnTempState {
 }
 
 class Game {
-  Game({required this.roomId,
-    required this.onChangeGameState,
-    required this.onChangeMember,
-    required this.onChangeGameTableState,
-    required this.onRequestScore,
-    required this.onEventGameTable,
-    required this.onChangeGameTableData,
-    required this.onReceiveCommandResult,
-    required this.onSetupLocalAudio}) {
+  Game(
+      {required this.roomId,
+      required this.onChangeGameState,
+      required this.onChangeMember,
+      required this.onChangeGameTableState,
+      required this.onRequestScore,
+      required this.onEventGameTable,
+      required this.onChangeGameTableData,
+      required this.onReceiveCommandResult,
+      required this.onSetupLocalAudio}) {
     print("Game:Game():1");
     table = Table(_tableOnUpdateTable);
     print("Game:Game():2");
@@ -99,6 +100,8 @@ class Game {
   final myTurnTempState = MyTurnTempState();
   Function()? onChangeSelectingTiles;
   Function()? onChangeMyTurnTempState;
+  bool isAudience = false;
+  String audienceAs = "";
 
   GameState state = GameState.onCreatingMyPeer;
 
@@ -114,6 +117,7 @@ class Game {
   }
 
   void setMyName(String name) async {
+    assert(isAudience == false);
     print("setMyName: ${myPeerId}, ${name}");
     _setState(GameState.onWaitingOtherPlayersForStart);
     final tmp = <String, dynamic>{
@@ -124,7 +128,26 @@ class Game {
     _onUpdateMemberMap(myPeerId, name);
   }
 
+  void joinAsAudience() {
+    isAudience = true;
+    if (member.length < 4) {
+      if (lostPlayerNames.isEmpty) {
+        _setState(GameState.onWaitingOtherPlayersForStart);
+      } else {
+        _setState(GameState.onWaitingOtherPlayersInGame);
+      }
+    } else {
+      _setState(GameState.onGame);
+    }
+  }
+
+  void setAudienceAs(String peerId) {
+    audienceAs = peerId;
+    onEventGameTable("setAudienceAs:${peerId}");
+  }
+
   void rejoinAs(String name) async {
+    assert(isAudience == false);
     final oldPeerId = lostPlayerNames.remove(name)!;
     final tmp = <String, dynamic>{
       "type": "rejoinAs",
@@ -502,15 +525,15 @@ class Game {
       print(
           "notifyMember: myPeerId=${myPeerId}, member=${member}, lostMember=${lostMember}");
       print(
-          "notifyMember: lostMember.isNotEmpty=${lostMember
-              .isNotEmpty}, !member.containsKey(myPeerId)=${!member.containsKey(
-              myPeerId)}");
-      if (lostMember.isNotEmpty && !member.containsKey(myPeerId)) {
-        lostPlayerNames
-          ..clear()
-          ..addAll(lostMember);
-        _setState(GameState.onNeedRejoin);
-        print("notifyMember: lostPlayerNames=${lostPlayerNames}");
+          "notifyMember: lostMember.isNotEmpty=${lostMember.isNotEmpty}, !member.containsKey(myPeerId)=${!member.containsKey(myPeerId)}");
+      if (isAudience == false) {
+        if (lostMember.isNotEmpty && !member.containsKey(myPeerId)) {
+          lostPlayerNames
+            ..clear()
+            ..addAll(lostMember);
+          _setState(GameState.onNeedRejoin);
+          print("notifyMember: lostPlayerNames=${lostPlayerNames}");
+        }
       }
     }
 
@@ -552,8 +575,8 @@ class Game {
     }
   }
 
-  void _notifyUpdatedTableData(Map<String, dynamic> oldData,
-      Map<String, dynamic> newData) {
+  void _notifyUpdatedTableData(
+      Map<String, dynamic> oldData, Map<String, dynamic> newData) {
     print("_notifyUpdatedTableData: ${myPeerId}");
     if (oldData["state"] != newData["state"]) {
       onChangeGameTableState(oldData["state"], newData["state"]);

@@ -69,10 +69,20 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     print("onChangeGameState: ${_game.myPeerId}: $oldState, $newState");
     if (oldState == game.GameState.onJoiningRoom &&
         newState == game.GameState.onSettingMyName) {
-      _setMyName();
+      if (_game.member.length < 4) {
+        _setMyName();
+      } else {
+        _game.joinAsAudience();
+      }
     }
-    if (newState == game.GameState.onNeedRejoin) {
-      _rejoin();
+    if (_game.isAudience) {
+      if (newState == game.GameState.onGame) {
+        _game.setAudienceAs(_game.member.keys.first);
+      }
+    } else {
+      if (newState == game.GameState.onNeedRejoin) {
+        _rejoin();
+      }
     }
 
     setState(() {});
@@ -84,6 +94,9 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   void onChangeGameTableState(String oldState, String newState) {
     print("onChangeGameTableState: ${_game.myPeerId}: $oldState, $newState");
+    if (_game.isAudience) {
+      return;
+    }
     if (newState == tbl.TableState.waitingNextHandForNextLeader) {
       showAcceptNextHandDialog(context, _game, "親を流して次の局を始めます。");
     }
@@ -151,11 +164,17 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     while (true) {
       final name = await NameSetDialog.show(context, _game.myName());
       print("NameSetDialog: ${name}");
+      if (name == "close") {
+        return;
+      }
+      if (name == "asAudience") {
+        _game.joinAsAudience();
+        return;
+      }
       if (name != null) {
         _game.setMyName(name);
         return;
       }
-      if (name == "close") return;
     }
   }
 
@@ -164,6 +183,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     while (true) {
       final name = await RejoinNameSelectDialog.show(
           context, _game.lostPlayerNames.keys.toList());
+      if (name == "asAudience") {
+        _game.joinAsAudience();
+        return;
+      }
       if (name != null) {
         _game.rejoinAs(name);
         return;
@@ -213,8 +236,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   }
 
   Widget buildBody(double scale) {
+    final peerId = _game.isAudience ? _game.audienceAs : _game.myPeerId;
     final tableSize = baseTableSize * scale;
-
     final stacks = <Widget>[];
     stacks.add(GestureDetector(
         onTap: () {
@@ -227,12 +250,12 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           width: tableSize,
           height: tableSize,
           child: CustomPaint(
-            painter: TablePainter(_game.myPeerId, _game.table, _uiImageMap),
+            painter: TablePainter(peerId, _game.table, _uiImageMap),
           ),
         )));
 
     if (showStageAndPlayerInfo) {
-      for (final widget in buildPlayerStateTiles(tableSize, scale)) {
+      for (final widget in buildPlayerStateTiles(peerId, tableSize, scale)) {
         stacks.add(widget);
       }
       stacks.add(Transform.translate(
@@ -268,9 +291,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     });
   }
 
-  List<Widget> buildPlayerStateTiles(double tableSize, double scale) {
+  List<Widget> buildPlayerStateTiles(
+      String myPeerId, double tableSize, double scale) {
     final playerOrder = _game.table.playerDataMap.keys.toList();
-    final baseIndex = playerOrder.indexOf(_game.myPeerId);
+    final baseIndex = playerOrder.indexOf(myPeerId);
     final leaderBaseIndex = _game.table.leaderChangeCount % 4;
 
     final winds = [
