@@ -50,7 +50,7 @@ class Game {
       required this.onReceiveCommandResult,
       required this.onSetupLocalAudio}) {
     print("Game:Game():1");
-    table = Table(_tableOnUpdateTable);
+    table = Table(_tableOnUpdateTable, _onAcceptRollback);
     print("Game:Game():2");
     oldTableData = table.toMap();
     print("Game:Game():3");
@@ -102,6 +102,7 @@ class Game {
   Function()? onChangeMyTurnTempState;
   bool isAudience = false;
   String audienceAs = "";
+  final tableDataLogs = <Map<String, dynamic>>[];
 
   GameState state = GameState.onCreatingMyPeer;
 
@@ -214,6 +215,9 @@ class Game {
       //"handleRequestGetRiichiBarScore": table.handleRequestGetRiichiBarScore,
       //"handleAcceptGetRiichiBarScore": table.handleAcceptGetRiichiBarScore,
       //"handleRefuseGetRiichiBarScore": table.handleRefuseGetRiichiBarScore,
+      "handleRequestRollback": table.handleRequestRollback,
+      "handleAcceptRollback": table.handleAcceptRollback,
+      "handleRefuseRollback": table.handleRefuseRollback,
     };
   }
 
@@ -447,6 +451,19 @@ class Game {
         await _handleCmd("handleGetRiichiBarScoreAll", myPeerId));
   }
 
+  Future<void> handleRequestRollback(int index) async {
+    _handleCommandResult(await _handleCmd("handleRequestRollback", myPeerId,
+        args: {"index": index}));
+  }
+
+  Future<void> handleAcceptRollback() async {
+    _handleCommandResult(await _handleCmd("handleAcceptRollback", myPeerId));
+  }
+
+  Future<void> handleRefuseRollback() async {
+    _handleCommandResult(await _handleCmd("handleRefuseRollback", myPeerId));
+  }
+
   /*
   Future<void> handleRequestGetRiichiBarScore(
       List<String> targetPeerIds, int numberOfRemainRiichiBars) async {
@@ -573,11 +590,22 @@ class Game {
     if (dataType == "updateTableData") {
       _skyWayOnUpdateTable(data["data"] as Map<String, dynamic>);
     }
+
+    if (dataType == "rollback") {
+      final logs = (data["tableDataLogs"] as List).map((e) => e as Map<String, dynamic>);
+      tableDataLogs.clear();
+      tableDataLogs.addAll(logs);
+      final lastData = tableDataLogs.removeLast();
+      print("_skyWayHandleReceivedData: rollback: ${lastData}");
+      _skyWayOnUpdateTable(lastData);
+    }
   }
 
   void _notifyUpdatedTableData(
       Map<String, dynamic> oldData, Map<String, dynamic> newData) {
-    print("_notifyUpdatedTableData: ${myPeerId}");
+    print("_notifyUpdatedTableData: ${myPeerId}, ${newData["updatedFor"]}");
+    tableDataLogs.add(newData);
+
     if (oldData["state"] != newData["state"]) {
       onChangeGameTableState(oldData["state"], newData["state"]);
     }
@@ -632,6 +660,28 @@ class Game {
         }
       }
     }
+  }
+
+  void _onAcceptRollback(int index) {
+    assert(isOwner());
+    for (final data in tableDataLogs) {
+      print("_onAcceptRollback: ${data["updatedFor"]}");
+    }
+    tableDataLogs.removeRange(index + 1, tableDataLogs.length);
+    for (final data in tableDataLogs) {
+      print("_onAcceptRollback: ${data["updatedFor"]}");
+    }
+
+    final tmp = <String, dynamic>{
+      "type": "rollback",
+      "tableDataLogs": tableDataLogs,
+    };
+    skyWay.sendData(jsonEncode(tmp));
+
+    final lastData = tableDataLogs.removeLast();
+    table.applyData(lastData);
+    _notifyUpdatedTableData(oldTableData, lastData);
+    oldTableData = lastData;
   }
 
   bool isOwner() {

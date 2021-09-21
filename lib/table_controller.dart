@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'commad_handler.dart';
@@ -82,6 +83,8 @@ class PlayerData {
     data.acceptedNextHand = map["acceptedNextHand"] as bool;
     data.acceptedGameReset = map["acceptedGameReset"] as bool;
     data.acceptedGetRiichiBarScore = map["acceptedGetRiichiBarScore"] as bool;
+    data.acceptedRollback = map["acceptedRollback"] as bool;
+
     data.score = map["score"] as int;
     data.openTiles = map["openTiles"];
     data.existRiichiBar = map["existRiichiBar"];
@@ -101,6 +104,7 @@ class PlayerData {
   bool acceptedNextHand = false;
   bool acceptedGameReset = false;
   bool acceptedGetRiichiBarScore = false;
+  bool acceptedRollback = false;
   int score = 25000;
   bool openTiles = false;
   bool existRiichiBar = false;
@@ -127,6 +131,7 @@ class PlayerData {
     acceptedNextHand = false;
     acceptedGameReset = false;
     acceptedGetRiichiBarScore = false;
+    acceptedRollback = false;
   }
 
   Map<String, dynamic> toMap() {
@@ -138,6 +143,7 @@ class PlayerData {
     map["acceptedNextHand"] = acceptedNextHand;
     map["acceptedGameReset"] = acceptedGameReset;
     map["acceptedGetRiichiBarScore"] = acceptedGetRiichiBarScore;
+    map["acceptedRollback"] = acceptedRollback;
 
     map["openTiles"] = openTiles;
     map["existRiichiBar"] = existRiichiBar;
@@ -223,6 +229,10 @@ class TableState {
       "waitingNextHandForContinueLeader";
   static const waitingGetRiichiBarScore = "waitingGetRiichiBarScore";
   static const waitingGameReset = "waitingGameReset";
+
+  static const waitingRollbackFromDrawable = "waitingRollbackFromDrawable";
+  static const waitingRollbackFromProcessingFinishHand =
+      "waitingRollbackFromProcessingFinishHand";
 }
 
 class TableData {
@@ -247,6 +257,7 @@ class TableData {
   int countOfKan = 0;
   String justCalledClosedKanTilesId =
       ""; // 暗槓された牌のID。打牌するまで、暗槓の両端を表側で表示するために使う。
+  int requestedRollbackIndex = -1;
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
@@ -272,8 +283,10 @@ class TableData {
     map["getRiichiBarScoreRequest"] = getRiichiBarScoreRequest == null
         ? <String, dynamic>{}
         : getRiichiBarScoreRequest!.toMap();
+    map["requestedRollbackIndex"] = requestedRollbackIndex;
 
-    return map;
+    // 完全コピーするため、一度json文字列に変換してから復号している。
+    return jsonDecode(jsonEncode(map)) as Map<String, dynamic>;
   }
 
   void applyData(Map<String, dynamic> map) {
@@ -303,6 +316,8 @@ class TableData {
     } else {
       getRiichiBarScoreRequest = GetRiichiBarScoreRequest.fromJsonMap(tmp);
     }
+
+    requestedRollbackIndex = map["requestedRollbackIndex"] as int;
   }
 
   List<String> idList() {
@@ -342,15 +357,17 @@ class TableData {
 }
 
 class Table extends TableData {
-  Table(this._updateTableListener);
+  Table(this._updateTableListener, this._acceptRollbackListener);
 
   final Function(String) _updateTableListener;
+  final Function(int) _acceptRollbackListener;
 
   void startGame(Map<String, String> member) {
     leaderChangeCount = -1; // 局数: 0~3:東場, 4~7:南場,
     leaderContinuousCount = 0; // 場数（親継続数）
     remainRiichiBarCounts = 0; // リーチ供託棒数
     playerDataMap.clear();
+    requestedRollbackIndex = -1;
 
     // メンバーの順番を乱数でシャッフルする。
     final shuffled = <String, String>{}; // <Peer ID, Player Name>
@@ -840,6 +857,57 @@ class Table extends TableData {
     _updateTableListener("handleRefuseGetRiichiBarScore");
   }
    */
+
+  handleRequestRollback({required String peerId, required int index}) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.drawable,
+      TableState.processingFinishHand
+    ]);
+    if (state == TableState.drawable) {
+      state = TableState.waitingRollbackFromDrawable;
+    } else {
+      state = TableState.waitingRollbackFromProcessingFinishHand;
+    }
+    requestedRollbackIndex = index;
+    _updateTableListener("handleRequestRollback");
+  }
+
+  handleAcceptRollback({required String peerId}) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.waitingRollbackFromDrawable,
+      TableState.waitingRollbackFromProcessingFinishHand
+    ]);
+
+    final data = playerData(peerId)!;
+    data.acceptedRollback = true;
+
+    var waitingPlayerCount = 0;
+    for (final v in playerDataMap.values) {
+      waitingPlayerCount += v.acceptedRollback ? 1 : 0;
+    }
+    print("handleAcceptRollback: ${waitingPlayerCount}");
+    if (waitingPlayerCount == 4) {
+      _acceptRollbackListener(requestedRollbackIndex);
+      requestedRollbackIndex = -1;
+    }
+  }
+
+  handleRefuseRollback({required String peerId}) {
+    _checkState(peerId, needMyTurn: false, allowTableState: [
+      TableState.waitingRollbackFromDrawable,
+      TableState.waitingRollbackFromProcessingFinishHand
+    ]);
+    for (final data in playerDataMap.values) {
+      data.acceptedGameReset = false;
+    }
+    if (state == TableState.waitingRollbackFromDrawable) {
+      state = TableState.drawable;
+    } else {
+      state = TableState.processingFinishHand;
+    }
+    requestedRollbackIndex = -1;
+    _updateTableListener("handleRefuseRollback");
+  }
 
   handleRequestScore(
       {required String peerId, required Map<String, dynamic> request}) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:web_app_sample/dialogs/rollback_dialog.dart';
 import 'package:web_app_sample/dialogs/trading_score_dialog.dart';
 import 'dart:ui' as ui;
 
@@ -270,6 +271,11 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
 
   Widget _buildPopupMenu() {
     final enabledDrawGame = g().table.state == tbl.TableState.drawable;
+    final rollbackable = [
+      tbl.TableState.drawable,
+      tbl.TableState.processingFinishHand
+    ].contains(g().table.state);
+
     return PopupMenuButton<String>(
       onSelected: _onSelectedPopupMenu,
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -290,6 +296,11 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           child: const Text('流局'),
           enabled: enabledDrawGame,
         ),
+        PopupMenuItem<String>(
+          value: "rollback",
+          child: const Text('巻き戻し'),
+          enabled: rollbackable,
+        ),
       ],
     );
   }
@@ -303,5 +314,12 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       showChangeLeaderContinuousCountDialog(context, g());
     }
     if (menu == "drawGame") g().requestDrawGame();
+    if (menu == "rollback") {
+      showRollbackDialog(context, g()).then((index) {
+        if (index != null) {
+          g().handleRequestRollback(index);
+        }
+      });
+    }
   }
 }
