@@ -7,7 +7,7 @@ import 'commad_handler.dart';
 
 const skyWayKey = '05bd41ee-71ec-4d8b-bd68-f6b7e1172b76';
 const roomMode = "mesh";
-const useStab = true;
+const useStab = false;
 
 enum GameState {
   onCreatingMyPeer,
@@ -56,6 +56,8 @@ class Game {
     print("Game:Game():3");
     skyWay.setupLocalAudio((enabled, message) {
       print("Game:Game():3-1");
+      enabledAudio = enabled;
+      availableAudio = enabled;
       onSetupLocalAudio(enabled, message);
       print("Game:Game():3-2");
       skyWay.newPeer(skyWayKey, 3, (peerId) {
@@ -102,6 +104,9 @@ class Game {
   Function()? onChangeMyTurnTempState;
   bool isAudience = false;
   String audienceAs = "";
+  var enabledAudio = false;
+  var availableAudio = false;
+
   final tableDataLogs = <Map<String, dynamic>>[];
 
   GameState state = GameState.onCreatingMyPeer;
@@ -111,6 +116,13 @@ class Game {
     final oldState = state;
     state = newState;
     onChangeGameState(oldState, state);
+  }
+
+  setEnabledAudio(bool enabled) {
+    if (availableAudio) {
+      enabledAudio = enabled;
+      skyWay.setEnabledAudio(enabled);
+    }
   }
 
   String myName() {
@@ -592,7 +604,8 @@ class Game {
     }
 
     if (dataType == "rollback") {
-      final logs = (data["tableDataLogs"] as List).map((e) => e as Map<String, dynamic>);
+      final logs =
+          (data["tableDataLogs"] as List).map((e) => e as Map<String, dynamic>);
       tableDataLogs.clear();
       tableDataLogs.addAll(logs);
       final lastData = tableDataLogs.removeLast();

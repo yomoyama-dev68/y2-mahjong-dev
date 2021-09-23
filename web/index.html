@@ -40,6 +40,15 @@
     let remoteAudioMap = {};
     let localStream;
 
+    function setEnabledAudio(enabled) {
+      console.log('index: setEnabledAudio: E');
+      if (localStream !== 'undefined') {
+        console.log(localStream.getAudioTracks());
+        localStream.getAudioTracks()[0].enabled = enabled;
+      }
+      console.log('index: setEnabledAudio: X');
+    }
+
     function setupLocalAudio(onSetupLocalAudio) {
         console.log('index: setupLocalAudio: E');
         try {

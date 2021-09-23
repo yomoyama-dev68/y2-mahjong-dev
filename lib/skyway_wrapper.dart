@@ -2,6 +2,8 @@ import 'package:js/js.dart';
 import 'package:uuid/uuid.dart';
 import 'skyway_stab.dart' as stab;
 
+@JS('setEnabledAudio')
+external void _setEnabledAudio(bool enabled);
 
 @JS('setupLocalAudio')
 external void _setupLocalAudio(Function(bool, String) onSetupLocalAudio);
@@ -31,6 +33,10 @@ class SkyWayHelper {
 
   final bool useStab;
   final peerId = const Uuid().v4();
+
+  void setEnabledAudio(bool enabled) {
+    _setEnabledAudio(enabled);
+  }
 
   void setupLocalAudio(Function(bool, String) onSetupLocalAudio) {
     _setupLocalAudio(allowInterop(onSetupLocalAudio));

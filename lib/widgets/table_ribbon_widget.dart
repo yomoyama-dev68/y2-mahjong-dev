@@ -301,6 +301,11 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           child: const Text('巻き戻し'),
           enabled: rollbackable,
         ),
+        PopupMenuItem<String>(
+          value: g().enabledAudio ? "mute" : "mute-off",
+          child: Text(g().enabledAudio ? "ミュート" : "ミュートオフ"),
+          enabled: g().availableAudio,
+        ),
       ],
     );
   }
@@ -320,6 +325,12 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           g().handleRequestRollback(index);
         }
       });
+    }
+    if (menu == "mute-off") {
+      g().setEnabledAudio(true);
+    }
+    if (menu == "mute") {
+      g().setEnabledAudio(false);
     }
   }
 }
