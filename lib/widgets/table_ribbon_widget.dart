@@ -9,9 +9,12 @@ import '../dialogs/next_hand_dialog.dart';
 import '../table_controller.dart' as tbl;
 
 class TableRibbonWidget extends StatefulWidget {
-  const TableRibbonWidget({Key? key, required this.gameData}) : super(key: key);
+  const TableRibbonWidget(
+      {Key? key, required this.gameData, required this.imageMap})
+      : super(key: key);
 
   final game.Game gameData;
+  final Map<String, Image> imageMap;
 
   @override
   _TableRibbonWidgetState createState() => _TableRibbonWidgetState();
@@ -320,7 +323,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     }
     if (menu == "drawGame") g().requestDrawGame();
     if (menu == "rollback") {
-      showRollbackDialog(context, g()).then((index) {
+      showRollbackDialog(context, g(), widget.imageMap).then((index) {
         if (index != null) {
           g().handleRequestRollback(index);
         }

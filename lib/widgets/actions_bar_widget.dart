@@ -48,7 +48,7 @@ class ActionsBarWidgetState extends State<ActionsBarWidget> {
     }
     widgets.add(SizedBox(
       width: widget.tableSize,
-      child: TableRibbonWidget(gameData: g()),
+      child: TableRibbonWidget(gameData: g(), imageMap: widget.imageMap),
     ));
 
     return Column(children: widgets);
