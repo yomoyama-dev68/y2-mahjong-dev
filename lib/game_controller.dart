@@ -7,7 +7,7 @@ import 'commad_handler.dart';
 
 const skyWayKey = '05bd41ee-71ec-4d8b-bd68-f6b7e1172b76';
 const roomMode = "mesh";
-const useStab = false;
+const useStab = true;
 
 enum GameState {
   onCreatingMyPeer,

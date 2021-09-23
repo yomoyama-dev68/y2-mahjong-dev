@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:web_app_sample/dialogs/get_riichi_bar_score_dialog.dart';
 import 'package:web_app_sample/dialogs/notify_dialog.dart';
 import 'package:web_app_sample/dialogs/rollback_dialog.dart';
@@ -8,7 +9,6 @@ import 'package:web_app_sample/widgets/stage_info_widget.dart';
 import 'package:web_app_sample/resources/image_loader.dart';
 import 'package:web_app_sample/dialogs/trading_score_dialog.dart';
 import 'dart:ui' as ui;
-
 import 'actions_bar_widget.dart';
 import 'called_tiles_widget.dart';
 import '../commad_handler.dart';
@@ -117,10 +117,23 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         newState == tbl.TableState.waitingRollbackFromProcessingFinishHand) {
       showAcceptRollbackDialog(context, _game);
     }
+    if (newState == tbl.TableState.called) {
+      if (_game.table.turnedPeerId != _game.myPeerId) {
+        final callerName = _game.member[_game.table.turnedPeerId]!;
+        Fluttertoast.showToast(
+            msg: "${callerName}が鳴こうとしています。",
+            webPosition: "center",
+            timeInSecForIosWeb: 2);
+      }
+    }
 
     if (newState == tbl.TableState.processingFinishHand) {
       if (_game.table.lastWinner == _game.myPeerId && _game.existRiichiBar()) {
         showGetRiichiBarScoreDialogAll(context, _game);
+      }
+      if (_game.table.lastWinner != _game.myPeerId) {
+        final winnerName = _game.member[_game.table.lastWinner]!;
+        showNotifyDialog(context, "${winnerName}さんがアガリました。");
       }
     }
   }
