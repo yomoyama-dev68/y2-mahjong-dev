@@ -32,7 +32,8 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: "Noto Sans JP",
       ),
-      home: _buildHome(),
+      onGenerateRoute: _generateRoute,
+      initialRoute: '/',
     );
   }
 
@@ -51,5 +52,27 @@ class MyApp extends StatelessWidget {
     } else {
       return TopWidget(roomId: roomId);
     }
+  }
+
+  static String? _getRoomId(String? url) {
+    if (url == null) return null;
+
+    final paths = url.split('?');
+    if (paths.length < 2) {
+      return null;
+    }
+    return Uri.splitQueryString(paths.last)["roomId"];
+  }
+
+  static Route<dynamic>? _generateRoute(RouteSettings settings) {
+    print("generateRoute: name=${settings.name}, "
+        "arguments=${settings.arguments}, "
+        "${window.location.href}");
+
+    String? roomId = _getRoomId(settings.name);
+    if (roomId != null) {
+      return MaterialPageRoute(builder: (_) => TopWidget(roomId: roomId));
+    }
+    return MaterialPageRoute(builder: (_) => FirstWidget(roomId: const Uuid().v4()));
   }
 }

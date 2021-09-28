@@ -228,7 +228,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       return buildWaitingView("Setting my player name.");
     }
     if (_game.state == game.GameState.onWaitingOtherPlayersForStart) {
-      return buildWaitingView("Waiting other players.");
+      return buildWaitingView("他のプレイヤーを待っています。");
     }
     if (_game.state == game.GameState.onWaitingOtherPlayersInGame) {
       final subtext = _game.lostPlayerNames.keys.toList().join(" と ");
@@ -249,7 +249,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   Widget buildWaitingView(String message) {
     final widgets = <Widget>[Text(message), const CircularProgressIndicator()];
     for (final i in _game.member.entries) {
-      widgets.add(Text("${i.key} - ${i.value}"));
+      widgets.add(Text("${i.value}(${i.key})"));
     }
     return Column(children: widgets);
   }

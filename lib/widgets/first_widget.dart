@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:html';
 
 class FirstWidget extends StatelessWidget {
@@ -19,14 +20,25 @@ class FirstWidget extends StatelessWidget {
 
   Widget _buildContent() {
     String link = "${window.location.href}?roomId=${roomId}";
-    return SelectableText.rich(
-      TextSpan(
-        style: baseStyle,
-        children: <TextSpan>[
-          TextSpan(text: link, style: linkStyle),
-          const TextSpan(text: '\nこのリンクを他のプレイヤーに送ってください。'),
-        ],
-      ),
-    );
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Row(mainAxisSize: MainAxisSize.min, children: [
+        SelectableText.rich(TextSpan(
+          children: <TextSpan>[
+            TextSpan(text: link, style: linkStyle),
+          ],
+        )),
+        ElevatedButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: link));
+            },
+            child: const Icon(Icons.content_copy))
+      ]),
+      Text("このリンクを他のプレイヤーに送ってください。"),
+      ElevatedButton(
+          onPressed: () {
+            window.open('https://developer.mozilla.org/ja/docs/Web/API/Window/open', '');
+          },
+          child: Text("操作方法"))
+    ]);
   }
 }
