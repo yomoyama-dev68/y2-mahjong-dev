@@ -10,6 +10,7 @@ import 'package:web_app_sample/resources/sound_loader.dart';
 import 'package:web_app_sample/widgets/stage_info_widget.dart';
 import 'package:web_app_sample/resources/image_loader.dart';
 import 'package:web_app_sample/dialogs/trading_score_dialog.dart';
+import 'package:web_app_sample/widgets/top_icon.dart';
 import 'package:web_app_sample/widgets/voiced_icon.dart';
 import 'dart:ui' as ui;
 import 'actions_bar_widget.dart';
@@ -256,13 +257,24 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   }
 
   Widget buildWaitingView(String message) {
-    final widgets = <Widget>[Text(message), const CircularProgressIndicator()];
+    final widgets = <Widget>[
+      Stack(
+        children: const [
+          TopIcon(),
+          CircularProgressIndicator(),
+        ],
+        alignment: Alignment.center,
+      ),
+      const SizedBox(height: 20,),
+      Text(message)
+    ];
+
     for (final i in _game.member.entries) {
       widgets.add(Row(mainAxisSize: MainAxisSize.min, children: [
+        VoicedIcon(peerId: i.key, streamController: _streamController),
         Text(
-          "${i.value}(${i.key})",
+          "${i.value}(${i.key})が参加しました。",
         ),
-        VoicedIcon(peerId: i.key, streamController: _streamController)
       ]));
     }
     return Column(children: widgets);
