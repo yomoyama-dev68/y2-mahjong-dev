@@ -7,7 +7,7 @@ import 'commad_handler.dart';
 
 const skyWayKey = '05bd41ee-71ec-4d8b-bd68-f6b7e1172b76';
 const roomMode = "mesh";
-const useStab = true;
+const useStab = false;
 
 enum GameState {
   onCreatingMyPeer,
@@ -48,7 +48,8 @@ class Game {
       required this.onEventGameTable,
       required this.onChangeGameTableData,
       required this.onReceiveCommandResult,
-      required this.onSetupLocalAudio}) {
+      required this.onSetupLocalAudio,
+      required this.onVoiced}) {
     print("Game:Game():1");
     table = Table(_tableOnUpdateTable, _onAcceptRollback);
     print("Game:Game():2");
@@ -78,7 +79,7 @@ class Game {
             _skyWayOnClose);
         print("Game:Game():7");
       });
-    });
+    }, _onVoicedMyself);
   }
 
   final skyWay = wrapper.SkyWayHelper(useStab: useStab);
@@ -91,6 +92,7 @@ class Game {
   final Function(String) onChangeGameTableData;
   final Function(CommandResult) onReceiveCommandResult;
   final Function(bool, String) onSetupLocalAudio;
+  final Function(String) onVoiced;
 
   final member = <String, String>{}; // <Peer ID, Player Name>
   final lostPlayerNames = <String, String>{}; // <Player Name, Peer ID>
@@ -110,6 +112,18 @@ class Game {
   final tableDataLogs = <Map<String, dynamic>>[];
 
   GameState state = GameState.onCreatingMyPeer;
+
+  void _onVoicedMyself(int voiceDiff) {
+    if (voiceDiff < 10) return;
+    final name = myName();
+    if (name.isEmpty) return;
+
+    final tmp = <String, dynamic>{
+      "type": "notifyVoiced",
+    };
+    skyWay.sendData(jsonEncode(tmp));
+    onVoiced(myPeerId);
+  }
 
   void _setState(GameState newState) {
     if (state == newState) return;
@@ -611,6 +625,10 @@ class Game {
       final lastData = tableDataLogs.removeLast();
       print("_skyWayHandleReceivedData: rollback: ${lastData}");
       _skyWayOnUpdateTable(lastData);
+    }
+
+    if (dataType == "notifyVoiced") {
+      onVoiced(senderPeerId);
     }
   }
 

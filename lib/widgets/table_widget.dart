@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:web_app_sample/dialogs/get_riichi_bar_score_dialog.dart';
@@ -8,6 +10,7 @@ import 'package:web_app_sample/resources/sound_loader.dart';
 import 'package:web_app_sample/widgets/stage_info_widget.dart';
 import 'package:web_app_sample/resources/image_loader.dart';
 import 'package:web_app_sample/dialogs/trading_score_dialog.dart';
+import 'package:web_app_sample/widgets/voiced_icon.dart';
 import 'dart:ui' as ui;
 import 'actions_bar_widget.dart';
 import 'called_tiles_widget.dart';
@@ -41,6 +44,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   final Map<String, Image> _imageMap = {};
   late game.Game _game;
   bool showStageAndPlayerInfo = true;
+  final _streamController = StreamController<String>.broadcast();
 
   @override
   void initState() {
@@ -57,7 +61,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         onRequestScore: onRequestScore,
         onEventGameTable: onEventGameTable,
         onReceiveCommandResult: onReceiveCommandResult,
-        onSetupLocalAudio: onSetupLocalAudio);
+        onSetupLocalAudio: onSetupLocalAudio,
+        onVoiced: onVoiced);
   }
 
   void onSetupLocalAudio(bool enabled, String message) {
@@ -175,6 +180,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     setState(() {});
   }
 
+  void onVoiced(String peerId) {
+    _streamController.sink.add(peerId);
+  }
+
   Future<void> _setMyName() async {
     if (widget.playerName != null) {
       _game.setMyName(widget.playerName!);
@@ -249,7 +258,12 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   Widget buildWaitingView(String message) {
     final widgets = <Widget>[Text(message), const CircularProgressIndicator()];
     for (final i in _game.member.entries) {
-      widgets.add(Text("${i.value}(${i.key})"));
+      widgets.add(Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(
+          "${i.value}(${i.key})",
+        ),
+        VoicedIcon(peerId: i.key, streamController: _streamController)
+      ]));
     }
     return Column(children: widgets);
   }
@@ -348,8 +362,15 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           offset: offsets[direction],
           child: Transform.rotate(
               angle: angles[direction],
-              child: PlayerStateTile(winds[leaderIndex], data.name, data.score,
-                  data.existRiichiBar, turned))));
+              child: PlayerStateTile(
+                  winds[leaderIndex],
+                  data.name,
+                  data.score,
+                  data.existRiichiBar,
+                  turned,
+                  peerId,
+                  _streamController,
+                  !_game.enabledAudio))));
     }
 
     return widgets;

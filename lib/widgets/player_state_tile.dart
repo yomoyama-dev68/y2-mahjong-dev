@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:web_app_sample/widgets/voiced_icon.dart';
 
 class PlayerStateTile extends StatelessWidget {
-  PlayerStateTile(this.wind, this.name, this.score, this.riichi,
-      this.turned); // コンストラクタで引数を受け取る
+  const PlayerStateTile(this.wind, this.name, this.score, this.riichi,
+      this.turned, this.peerId, this.streamController, this.muted,
+      {Key? key})
+      : super(key: key); // コンストラクタで引数を受け取る
 
   static const windTextStyle = TextStyle(
     color: Colors.white,
@@ -24,6 +29,9 @@ class PlayerStateTile extends StatelessWidget {
   final int score;
   final bool riichi;
   final bool turned;
+  final String peerId;
+  final StreamController<String> streamController;
+  final bool muted;
 
   int _score() {
     if (riichi) return score - 1000;
@@ -65,7 +73,15 @@ class PlayerStateTile extends StatelessWidget {
                               textAlign: TextAlign.right,
                             )
                           ],
-                        )))
+                        ))),
+                Padding(
+                    padding: EdgeInsets.all(5),
+                    child: VoicedIcon(
+                      peerId: peerId,
+                      streamController: streamController,
+                      color: Colors.white,
+                      muted: muted,
+                    ))
               ],
             )));
   }

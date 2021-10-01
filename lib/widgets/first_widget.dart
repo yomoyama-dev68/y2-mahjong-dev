@@ -27,11 +27,13 @@ class FirstWidget extends StatelessWidget {
             TextSpan(text: link, style: linkStyle),
           ],
         )),
-        ElevatedButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: link));
-            },
-            child: const Icon(Icons.content_copy))
+        IconButton(
+          icon: const Icon(Icons.content_copy),
+          tooltip: 'copy',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: link));
+          },
+        ),
       ]),
       Text("このリンクを他のプレイヤーに送ってください。"),
       ElevatedButton(

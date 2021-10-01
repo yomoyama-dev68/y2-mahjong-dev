@@ -39,6 +39,47 @@
     let room;
     let remoteAudioMap = {};
     let localStream;
+    let audioContext;
+    let audioDestination;
+    let audioSource;
+    let audioGainNode;
+    let audioAnalyser;
+    let audioDataArray;
+
+    function setupLocalAudio(onSetupLocalAudio, onAnalyseVoiceLoop) {
+        console.log('index: setupLocalAudio: E');
+        try {
+            navigator.mediaDevices.getUserMedia({audio: true})
+            .then(function(stream) {
+              console.log('index: setupLocalAudio: on enabled.');
+              audioContext = new (window.AudioContext || window.webkitAudioContext)();
+              audioSource = audioContext.createMediaStreamSource(stream);
+              // audioGainNode = audioContext.createGain();
+              audioAnalyser = audioContext.createAnalyser();
+              audioDestination = audioContext.createMediaStreamDestination();
+
+              //audioSource.connect(audioGainNode);
+              //audioGainNode.connect(audioDestination);
+              //audioGainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+              audioAnalyser.fftSize = 2048;
+              audioSource.connect(audioAnalyser);
+              audioAnalyser.connect(audioDestination);
+              var bufferLength = audioAnalyser.frequencyBinCount;
+              audioDataArray = new Uint8Array(bufferLength);
+
+              localStream = audioDestination.stream;
+              onSetupLocalAudio(true, '');
+              setInterval(function() {analyseVoiceLooper(onAnalyseVoiceLoop)}, 300);
+            })
+            .catch(function(err) {
+              console.log('index: setupLocalAudio: on error.');
+              onSetupLocalAudio(false, err.message);
+            });
+        } catch(err) {
+            onSetupLocalAudio(false, err.message);
+        }
+        console.log('index: setupLocalAudio: X');
+    }
 
     function setEnabledAudio(enabled) {
       console.log('index: setEnabledAudio: E');
@@ -49,23 +90,15 @@
       console.log('index: setEnabledAudio: X');
     }
 
-    function setupLocalAudio(onSetupLocalAudio) {
-        console.log('index: setupLocalAudio: E');
-        try {
-            navigator.mediaDevices.getUserMedia({audio: true})
-            .then(function(stream) {
-              console.log('index: setupLocalAudio: on enabled.');
-              localStream = stream;
-              onSetupLocalAudio(true, '');
-            })
-            .catch(function(err) {
-              console.log('index: setupLocalAudio: on error.');
-              onSetupLocalAudio(false, err.message);
-            });
-        } catch(err) {
-            onSetupLocalAudio(false, err.message);
-        }
-        console.log('index: setupLocalAudio: X');
+    function analyseVoiceLooper(onAnalyseVoiceLoop) {
+      console.log('index: analyseVoiceLooper: E');
+      audioAnalyser.getByteTimeDomainData(audioDataArray);
+      let minValue = audioDataArray.reduce((min, p) => p < min ? p : min);
+      let maxValue = audioDataArray.reduce((max, p) => p > max ? p : max);
+      let diffValue = maxValue - minValue;
+      console.log(diffValue);
+      onAnalyseVoiceLoop(diffValue);
+      console.log('index: analyseVoiceLooper: X');
     }
 
     function newPeer(key, debug, onOpenCallback) {
@@ -152,8 +185,6 @@
       room.close();
     }
 
-
-
 </script>
 
 <script>
@@ -219,6 +250,7 @@
       // Service workers not supported. Just drop the <script> tag.
       loadMainDartJs();
     }
+
 
 
 

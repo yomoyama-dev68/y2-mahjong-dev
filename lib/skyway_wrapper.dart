@@ -6,7 +6,8 @@ import 'skyway_stab.dart' as stab;
 external void _setEnabledAudio(bool enabled);
 
 @JS('setupLocalAudio')
-external void _setupLocalAudio(Function(bool, String) onSetupLocalAudio);
+external void _setupLocalAudio(
+    Function(bool, String) onSetupLocalAudio, Function(int) onAnalyseVoiceLoop);
 
 @JS('newPeer')
 external void _newPeer(String key, int debug, Function(String) onOpenCallback);
@@ -38,8 +39,10 @@ class SkyWayHelper {
     _setEnabledAudio(enabled);
   }
 
-  void setupLocalAudio(Function(bool, String) onSetupLocalAudio) {
-    _setupLocalAudio(allowInterop(onSetupLocalAudio));
+  void setupLocalAudio(Function(bool, String) onSetupLocalAudio,
+      Function(int) onAnalyseVoiceLoop) {
+    _setupLocalAudio(
+        allowInterop(onSetupLocalAudio), allowInterop(onAnalyseVoiceLoop));
   }
 
   void newPeer(String key, int debug, Function(String) onOpenCallback) {
