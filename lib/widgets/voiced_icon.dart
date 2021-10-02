@@ -24,6 +24,7 @@ class VoicedIconState extends State<VoicedIcon>
   Timer? _timer;
   late AnimationController controller;
   late Animation<double> animation;
+  late StreamSubscription subscription;
 
   @override
   initState() {
@@ -37,7 +38,7 @@ class VoicedIconState extends State<VoicedIcon>
       curve: Curves.easeOutExpo,
     )));
 
-    widget.streamController.stream.listen((voicedPeerId) {
+    subscription = widget.streamController.stream.listen((voicedPeerId) {
       if (voicedPeerId == widget.peerId) {
         controller.reverse(from: 1.0);
       }
@@ -46,12 +47,17 @@ class VoicedIconState extends State<VoicedIcon>
 
   @override
   void dispose() {
+    subscription.cancel();
     controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.muted) {
+      return Icon(Icons.volume_off, color: widget.color);
+    }
+
     return FadeTransition(
       opacity: animation,
       child: Icon(Icons.volume_up, color: widget.color),
