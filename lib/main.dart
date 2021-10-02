@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:web_app_sample/widgets/first_widget.dart';
@@ -73,6 +75,28 @@ class MyApp extends StatelessWidget {
     if (roomId != null) {
       return MaterialPageRoute(builder: (_) => TopWidget(roomId: roomId));
     }
-    return MaterialPageRoute(builder: (_) => FirstWidget(roomId: const Uuid().v4()));
+    return MaterialPageRoute(
+        builder: (_) => FirstWidget(roomId: _generateRoomId()));
+  }
+
+  static _generateRoomId() {
+    final p0 = randomString(3);
+    final p1 = randomString(4);
+    final p2 = randomString(3);
+    return "${p0}-${p1}-${p2}";
+  }
+
+  static String randomString(int length) {
+    const _randomChars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const _charsLength = _randomChars.length;
+    final rand = Random();
+    final codeUnits = List.generate(
+      length,
+      (index) {
+        final n = rand.nextInt(_charsLength);
+        return _randomChars.codeUnitAt(n);
+      },
+    );
+    return String.fromCharCodes(codeUnits);
   }
 }

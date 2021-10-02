@@ -25,23 +25,25 @@ class FirstWidget extends StatelessWidget {
 
     return Column(mainAxisSize: MainAxisSize.min, children: [
       const TopIcon(),
-      const SizedBox(height: 20,),
+      const SizedBox(
+        height: 20,
+      ),
       Row(mainAxisSize: MainAxisSize.min, children: [
         FloatingActionButton(
             onPressed: () {
               _showLinkDialog(context, link);
             },
-            child: const Text("開始")
+            child: const Text("開始")),
+        const SizedBox(
+          width: 20,
         ),
-        const SizedBox(width: 20,),
         FloatingActionButton(
             onPressed: () {
               window.open(
                   'https://developer.mozilla.org/ja/docs/Web/API/Window/open',
                   '');
             },
-            child: const Text("遊び方")
-        )
+            child: const Text("遊び方"))
       ]),
     ]);
   }
@@ -52,12 +54,12 @@ class FirstWidget extends StatelessWidget {
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text("このリンクを他のプレイヤーに送ってください。"),
-            content: Row(mainAxisSize: MainAxisSize.min, children: [
-              SelectableText.rich(TextSpan(
-                children: <TextSpan>[
-                  TextSpan(text: link, style: linkStyle),
-                ],
-              )),
+            content: FittedBox(
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+              SelectableText(
+                link,
+                style: linkStyle,
+              ),
               IconButton(
                 icon: const Icon(Icons.content_copy),
                 tooltip: 'copy',
@@ -65,11 +67,36 @@ class FirstWidget extends StatelessWidget {
                   Clipboard.setData(ClipboardData(text: link));
                 },
               ),
-            ]),
+            ])),
             actions: <Widget>[
+              SimpleDialogOption(
+                child: const Text('送った。'),
+                onPressed: () {
+                  _showOpenLinkDialog(context, link);
+                },
+              ),
+            ],
+          );
+        });
+  }
+
+  void _showOpenLinkDialog(BuildContext context, String link) {
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text("ゲームルームに移動します。"),
+            actions: <Widget>[
+              SimpleDialogOption(
+                child: const Text('Cancel'),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
               SimpleDialogOption(
                 child: const Text('OK'),
                 onPressed: () {
+                  window.open(link, '');
                   Navigator.pop(context);
                 },
               ),
