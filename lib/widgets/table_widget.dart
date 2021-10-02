@@ -265,13 +265,22 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         ],
         alignment: Alignment.center,
       ),
-      const SizedBox(height: 20,),
+      const SizedBox(
+        height: 20,
+      ),
       Text(message)
     ];
 
     for (final i in _game.member.entries) {
+      final peerId = i.key;
+
+      final enabledAudio = _game.membersAudioState[peerId] ?? false;
+
       widgets.add(Row(mainAxisSize: MainAxisSize.min, children: [
-        VoicedIcon(peerId: i.key, streamController: _streamController),
+        VoicedIcon(
+            peerId: peerId,
+            streamController: _streamController,
+            muted: !enabledAudio),
         Text(
           "${i.value}(${i.key})が参加しました。",
         ),
@@ -370,6 +379,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       final peerId = playerOrder[index];
       final data = _game.table.playerDataMap[peerId]!;
       final turned = _game.table.turnedPeerId == peerId;
+      final enabledAudio = _game.membersAudioState[peerId] ?? false;
+
       widgets.add(Transform.translate(
           offset: offsets[direction],
           child: Transform.rotate(
@@ -382,7 +393,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
                   turned,
                   peerId,
                   _streamController,
-                  !_game.enabledAudio))));
+                  !enabledAudio))));
     }
 
     return widgets;

@@ -110,6 +110,7 @@ class Game {
   var availableAudio = false;
 
   final tableDataLogs = <Map<String, dynamic>>[];
+  final Map<String, bool> membersAudioState = <String, bool>{};
 
   GameState state = GameState.onCreatingMyPeer;
 
@@ -136,6 +137,13 @@ class Game {
     if (availableAudio) {
       enabledAudio = enabled;
       skyWay.setEnabledAudio(enabled);
+
+      final tmp = <String, dynamic>{
+        "type": "notifyAudioState",
+        "enabledAudio": enabledAudio,
+      };
+      skyWay.sendData(jsonEncode(tmp));
+      _onChangeAudioState(myPeerId, enabledAudio);
     }
   }
 
@@ -152,6 +160,16 @@ class Game {
       "name": name,
     };
     skyWay.sendData(jsonEncode(tmp));
+
+    Future.delayed(const Duration(milliseconds: 500)).then((_) {
+      final tmp2 = <String, dynamic>{
+        "type": "notifyAudioState",
+        "enabledAudio": enabledAudio,
+      };
+      skyWay.sendData(jsonEncode(tmp2));
+      _onChangeAudioState(myPeerId, enabledAudio);
+    });
+
     _onUpdateMemberMap(myPeerId, name);
   }
 
@@ -525,6 +543,15 @@ class Game {
     };
     print("_skyWayOnPeerJoin2: $tmp");
     skyWay.sendData(jsonEncode(tmp));
+
+    Future.delayed(const Duration(milliseconds: 500)).then((_) {
+      final tmp2 = <String, dynamic>{
+        "type": "notifyAudioState",
+        "enabledAudio": enabledAudio,
+      };
+      skyWay.sendData(jsonEncode(tmp2));
+    });
+
     print("_skyWayOnPeerJoi3:");
   }
 
@@ -630,6 +657,18 @@ class Game {
     if (dataType == "notifyVoiced") {
       onVoiced(senderPeerId);
     }
+
+    if (dataType == "notifyAudioState") {
+      print("notifyAudioState: ${data}");
+      final enabledAudio = data["enabledAudio"] as bool;
+      _onChangeAudioState(senderPeerId, enabledAudio);
+    }
+  }
+
+  void _onChangeAudioState(senderPeerId, enabledAudio) {
+    membersAudioState[senderPeerId] = enabledAudio;
+    print("_onChangeAudioState: ${membersAudioState}");
+    onEventGameTable("onChangeAudioState");
   }
 
   void _notifyUpdatedTableData(
