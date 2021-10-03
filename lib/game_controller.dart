@@ -385,12 +385,19 @@ class Game {
     }
   }
 
+  /*
   void pong() {
     myTurnTempState.onCalledFor = "pongOrChow";
     onChangeMyTurnTempState?.call();
   }
 
   void chow() {
+    myTurnTempState.onCalledFor = "pongOrChow";
+    onChangeMyTurnTempState?.call();
+  }
+  */
+
+  void pongOnChow() {
     myTurnTempState.onCalledFor = "pongOrChow";
     onChangeMyTurnTempState?.call();
   }

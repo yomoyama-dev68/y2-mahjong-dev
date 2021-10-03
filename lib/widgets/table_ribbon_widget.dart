@@ -131,7 +131,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
 
   List<Widget> _buildInSetup() {
     return [
-      _buildButtonForCallCmd("ツモる", null),
+      _buildButtonForCallCmd("引牌", null),
       _buildButtonForCallCmd("鳴く", null),
       _buildButtonForCallCmd("ロン", null),
     ];
@@ -198,8 +198,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     if (tblState == tbl.TableState.called) {
       return [
         _buildButtonForCallCmd("キャンセル", g().cancelCall),
-        _buildButtonForCallCmd("ポン", g().pong),
-        _buildButtonForCallCmd("チー", g().chow),
+        _buildButtonForCallCmd("ポン/チー", g().pongOnChow),
         _buildButtonForCallCmd("カン", g().openKan),
       ];
     }
@@ -207,13 +206,13 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     if (tblState == tbl.TableState.drawable) {
       if (callable()) {
         return [
-          _buildButtonForCallCmd("ツモる", g().drawTile),
+          _buildButtonForCallCmd("引牌", g().drawTile),
           _buildButtonForCallCmd("鳴く", g().call),
           _buildButtonForCallCmd("ロン", g().callRon),
         ];
       } else {
         return [
-          _buildButtonForCallCmd("ツモる", g().drawTile),
+          _buildButtonForCallCmd("引牌", g().drawTile),
           _buildButtonForCallCmd("鳴く", null),
           _buildButtonForCallCmd("ロン", null),
         ];
@@ -226,18 +225,18 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     ].contains(tblState)) {
       return [
         _buildButtonForCallCmd("リーチ", g().riichi),
-        _buildButtonForCallCmd("ツモ", g().tsumo),
         _buildButtonForCallCmd("暗槓", g().closeKan),
         _buildButtonForCallCmd("加槓", g().lateKan),
+        _buildButtonForCallCmd("ツモ", g().tsumo),
       ];
     }
 
     if (tblState == tbl.TableState.waitToDiscardForPongOrChow) {
       return [
         _buildButtonForCallCmd("リーチ", null),
-        _buildButtonForCallCmd("ツモ", null),
         _buildButtonForCallCmd("暗槓", null),
         _buildButtonForCallCmd("加槓", null),
+        _buildButtonForCallCmd("ツモ", null),
       ];
     }
 
@@ -247,13 +246,13 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
   List<Widget> buildForOtherTurn() {
     if (callable()) {
       return [
-        _buildButtonForCallCmd("ツモる", null),
+        _buildButtonForCallCmd("引牌", null),
         _buildButtonForCallCmd("鳴く", g().call),
         _buildButtonForCallCmd("ロン", g().callRon),
       ];
     }
     return [
-      _buildButtonForCallCmd("ツモる", null),
+      _buildButtonForCallCmd("引牌", null),
       _buildButtonForCallCmd("鳴く", null),
       _buildButtonForCallCmd("ロン", null),
     ];
