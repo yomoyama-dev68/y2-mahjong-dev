@@ -41,6 +41,7 @@ dependencies:
   web_socket_channel: ^2.1.0
   soundpool: ^2.1.0
   fluttertoast: ^8.0.8
+  flutter_markdown: ^0.6.6
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +70,7 @@ flutter:
     - assets/images.zip
     - assets/sounds/
     - assets/top_icon.png
+    - assets/licenses.md
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

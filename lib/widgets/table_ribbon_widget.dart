@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:y2_mahjong/dialogs/notify_dialog.dart';
 import 'package:y2_mahjong/dialogs/rollback_dialog.dart';
 import 'package:y2_mahjong/dialogs/trading_score_dialog.dart';
+import 'package:y2_mahjong/pages/markdown_page.dart';
 import 'dart:ui' as ui;
 
 import '../game_controller.dart' as game;
@@ -308,6 +311,10 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           child: Text(g().enabledAudio ? "ミュート" : "ミュートオフ"),
           enabled: g().availableAudio,
         ),
+        const PopupMenuItem<String>(
+          value: "licenses",
+          child: Text("ライセンス"),
+        ),
       ],
     );
   }
@@ -333,6 +340,17 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     }
     if (menu == "mute") {
       g().setEnabledAudio(false);
+    }
+    if (menu == "licenses") {
+      rootBundle.loadString('assets/licenses.md').then((text) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) {
+              return MarkDownPage(markdownText: text);
+            },
+          ),
+        );
+      });
     }
   }
 }
