@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:html';
 
-import 'package:web_app_sample/widgets/top_icon.dart';
+import 'package:y2_mahjong/widgets/top_icon.dart';
 
 class FirstWidget extends StatelessWidget {
   const FirstWidget({Key? key, required this.roomId}) : super(key: key);

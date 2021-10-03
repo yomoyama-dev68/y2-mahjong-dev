@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:web_app_sample/widgets/voiced_icon.dart';
+import 'package:y2_mahjong/widgets/voiced_icon.dart';
 
 class PlayerStateTile extends StatelessWidget {
   const PlayerStateTile(this.wind, this.name, this.score, this.riichi,

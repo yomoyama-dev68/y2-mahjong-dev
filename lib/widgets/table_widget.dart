@@ -2,16 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:web_app_sample/dialogs/get_riichi_bar_score_dialog.dart';
-import 'package:web_app_sample/dialogs/notify_dialog.dart';
-import 'package:web_app_sample/dialogs/rollback_dialog.dart';
-import 'package:web_app_sample/widgets/player_state_tile.dart';
-import 'package:web_app_sample/resources/sound_loader.dart';
-import 'package:web_app_sample/widgets/stage_info_widget.dart';
-import 'package:web_app_sample/resources/image_loader.dart';
-import 'package:web_app_sample/dialogs/trading_score_dialog.dart';
-import 'package:web_app_sample/widgets/top_icon.dart';
-import 'package:web_app_sample/widgets/voiced_icon.dart';
+import 'package:y2_mahjong/dialogs/get_riichi_bar_score_dialog.dart';
+import 'package:y2_mahjong/dialogs/notify_dialog.dart';
+import 'package:y2_mahjong/dialogs/rollback_dialog.dart';
+import 'package:y2_mahjong/widgets/player_state_tile.dart';
+import 'package:y2_mahjong/resources/sound_loader.dart';
+import 'package:y2_mahjong/widgets/stage_info_widget.dart';
+import 'package:y2_mahjong/resources/image_loader.dart';
+import 'package:y2_mahjong/dialogs/trading_score_dialog.dart';
+import 'package:y2_mahjong/widgets/top_icon.dart';
+import 'package:y2_mahjong/widgets/voiced_icon.dart';
 import 'dart:ui' as ui;
 import 'actions_bar_widget.dart';
 import 'called_tiles_widget.dart';
@@ -146,7 +146,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   void onChangeGameTableData(String updatedFor) {
     print("onChangeGameTableData");
-    if (_game.isOwner()) {
+    if (!game.soundOnlyOwner || _game.isOwner()) {
       final soundMap = <String, Function>{
         "_setupHand2": Sounds.drawTile,
         "_setupHand3": Sounds.sortTiles,

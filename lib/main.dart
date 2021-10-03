@@ -2,11 +2,11 @@ import 'dart:math';
 
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
-import 'package:web_app_sample/widgets/first_widget.dart';
-import 'package:web_app_sample/widgets/top_widget.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'dart:html';
+
+import 'package:y2_mahjong/widgets/first_widget.dart';
+import 'package:y2_mahjong/widgets/top_widget.dart';
 
 void main() {
   runApp(const MyApp());
@@ -18,18 +18,8 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    const locale = Locale("ja", "JP");
     return MaterialApp(
-      title: 'Flutter Demo',
-      locale: locale,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        locale,
-      ],
+      title: 'y2 mahjong',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: "Noto Sans JP",

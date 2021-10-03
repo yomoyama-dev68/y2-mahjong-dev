@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:web_app_sample/dialogs/rollback_dialog.dart';
-import 'package:web_app_sample/dialogs/trading_score_dialog.dart';
+import 'package:y2_mahjong/dialogs/rollback_dialog.dart';
+import 'package:y2_mahjong/dialogs/trading_score_dialog.dart';
 import 'dart:ui' as ui;
 
 import '../game_controller.dart' as game;
