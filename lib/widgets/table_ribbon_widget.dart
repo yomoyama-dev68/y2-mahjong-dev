@@ -144,6 +144,7 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     final widgets = <Widget>[];
     for (final player in g().member.entries) {
       widgets.add(_buildButtonForCallCmd(player.value, () {
+        // 指定したプレイヤーの視点に切り替える。
         g().setAudienceAs(player.key);
       }));
     }

@@ -107,6 +107,8 @@ class Game {
   Function()? onChangeMyTurnTempState;
   bool isAudience = false;
   String audienceAs = "";
+  final audienceMap = <String, String>{}; // <Peer ID, Audience Name>
+
   var enabledAudio = false;
   var availableAudio = false;
 
@@ -174,7 +176,14 @@ class Game {
     _onUpdateMemberMap(myPeerId, name);
   }
 
-  void joinAsAudience() {
+  void joinAsAudience(String name) {
+    audienceMap[myPeerId] = name;
+    final tmp = <String, dynamic>{
+      "type": "notifyMyNameAsAudience",
+      "name": name,
+    };
+    skyWay.sendData(jsonEncode(tmp));
+
     isAudience = true;
     if (member.length < 4) {
       if (lostPlayerNames.isEmpty) {
@@ -548,6 +557,7 @@ class Game {
       "type": "notifyMember",
       "member": member,
       "lostPlayerNames": lostPlayerNames,
+      "audienceMap": audienceMap
     };
     print("_skyWayOnPeerJoin2: $tmp");
     skyWay.sendData(jsonEncode(tmp));
@@ -575,9 +585,13 @@ class Game {
     print("_skyWayOnPeerLeave: $peerId");
     myTurnTempState.clear();
     onChangeMyTurnTempState?.call();
+    audienceMap.remove(peerId);
+    membersAudioState.remove(peerId);
+
     final name = member.remove(peerId);
     lostPlayerNames[name!] = peerId;
     _setState(GameState.onWaitingOtherPlayersInGame);
+
   }
 
   void _skyWayOnClose() {
@@ -593,10 +607,18 @@ class Game {
       _onUpdateMemberMap(senderPeerId, name);
     }
 
+    if (dataType == "notifyMyNameAsAudience") {
+      final name = data["name"] as String;
+      audienceMap[senderPeerId] = name;
+    }
+
     if (dataType == "notifyMember") {
       // メンバーマップを最新のものに置き換える、
       member.addAll((data["member"] as Map<String, dynamic>)
           .map((key, value) => MapEntry(key, value as String)));
+      audienceMap.addAll((data["audienceMap"] as Map<String, dynamic>)
+          .map((key, value) => MapEntry(key, value as String)));
+
       // 通信途絶したメンバーが自分だった場合、通信と
       final lostMember = (data["lostPlayerNames"] as Map<String, dynamic>)
           .map((key, value) => MapEntry(key, value as String));

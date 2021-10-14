@@ -1,16 +1,23 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+class NameSetResult {
+  NameSetResult(this.name, this.asPlayer, this.isClosed);
+
+  final String name;
+  final bool asPlayer;
+  final bool isClosed;
+}
+
 class NameSetDialog extends StatefulWidget {
   static final globalKey = GlobalKey();
 
-  const NameSetDialog({Key? key, required this.name}) : super(key: key);
+  const NameSetDialog({Key? key, required this.asAudience}) : super(key: key);
 
-  final String name;
+  final bool? asAudience;
 
-  static Future<String?> show(BuildContext context, String currentName) {
-
-    final dialog = NameSetDialog(name: currentName);
+  static Future<NameSetResult?> show(BuildContext context, {bool? asAudience}) {
+    final dialog = NameSetDialog(asAudience: asAudience);
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -22,14 +29,14 @@ class NameSetDialog extends StatefulWidget {
 
   static void close() {
     if (globalKey.currentContext != null) {
-      Navigator.pop<String>(globalKey.currentContext!, "close");
+      Navigator.pop<NameSetResult>(
+          globalKey.currentContext!, NameSetResult("", false, true));
     }
   }
 
   @override
   State createState() => NameSetDialogState();
 }
-
 
 class NameSetDialogState extends State<NameSetDialog> {
   final _textController = TextEditingController();
@@ -40,20 +47,25 @@ class NameSetDialogState extends State<NameSetDialog> {
       ElevatedButton(
         child: const Text("観戦者として参加"),
         onPressed: () {
-          Navigator.pop<String>(context, "asAudience");
-        },
-      ),
-      ElevatedButton(
-        child: const Text("OK"),
-        onPressed: () {
-          Navigator.pop<String>(context, _textController.text);
+          Navigator.pop<NameSetResult>(
+              context, NameSetResult(_textController.text, false, false));
         },
       ),
     ];
 
+    if (widget.asAudience != true) {
+      actions.add(ElevatedButton(
+        child: const Text("プレイヤーとして参加"),
+        onPressed: () {
+          Navigator.pop<NameSetResult>(
+              context, NameSetResult(_textController.text, true, false));
+        },
+      ));
+    }
+
     return AlertDialog(
       key: NameSetDialog.globalKey,
-      title: const Text("プレイヤー名を入力してください"),
+      title: const Text("名前を入力してください"),
       content: TextField(
         controller: _textController,
         decoration: const InputDecoration(border: OutlineInputBorder()),
@@ -89,7 +101,6 @@ class RejoinNameSelectDialog {
       },
       child: Text("観戦者"),
     ));
-
 
     return showDialog(
       context: context,

@@ -14,6 +14,7 @@ import 'package:y2_mahjong/widgets/top_icon.dart';
 import 'package:y2_mahjong/widgets/voiced_icon.dart';
 import 'dart:ui' as ui;
 import 'actions_bar_widget.dart';
+import 'audience_voice_icons.dart';
 import 'called_tiles_widget.dart';
 import '../commad_handler.dart';
 import '../game_controller.dart' as game;
@@ -64,6 +65,16 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         onReceiveCommandResult: onReceiveCommandResult,
         onSetupLocalAudio: onSetupLocalAudio,
         onVoiced: onVoiced);
+
+    Timer.periodic(
+      const Duration(seconds: 3),
+      (Timer timer) {
+        if (_game.audienceMap.length > 0) {
+          int num = Random().nextInt(_game.audienceMap.length);
+          onVoiced(_game.audienceMap.keys.toList()[num]);
+        }
+      },
+    );
   }
 
   void onSetupLocalAudio(bool enabled, String message) {
@@ -79,7 +90,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       if (_game.member.length < 4) {
         _setMyName();
       } else {
-        _game.joinAsAudience();
+        _setMyName(asAudience: true);
       }
     }
     if (_game.isAudience) {
@@ -185,23 +196,28 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     _streamController.sink.add(peerId);
   }
 
-  Future<void> _setMyName() async {
+  Future<void> _setMyName({bool? asAudience}) async {
     if (widget.playerName != null) {
       _game.setMyName(widget.playerName!);
       return;
     }
     while (true) {
-      final name = await NameSetDialog.show(context, _game.myName());
-      print("NameSetDialog: ${name}");
-      if (name == "close") {
+      final result = await NameSetDialog.show(context, asAudience: asAudience);
+      print("NameSetDialog: ${result}");
+      if (result == null) {
         return;
       }
-      if (name == "asAudience") {
-        _game.joinAsAudience();
+      if (result.isClosed) {
         return;
       }
-      if (name != null) {
-        _game.setMyName(name);
+      if (result.name.isEmpty) {
+        continue;
+      }
+      if (result.asPlayer) {
+        _game.setMyName(result.name);
+        return;
+      } else {
+        _game.joinAsAudience(result.name);
         return;
       }
     }
@@ -213,7 +229,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       final name = await RejoinNameSelectDialog.show(
           context, _game.lostPlayerNames.keys.toList());
       if (name == "asAudience") {
-        _game.joinAsAudience();
+        _setMyName(asAudience: true);
         return;
       }
       if (name != null) {
@@ -273,9 +289,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
     for (final i in _game.member.entries) {
       final peerId = i.key;
-
       final enabledAudio = _game.membersAudioState[peerId] ?? false;
-
       widgets.add(Row(mainAxisSize: MainAxisSize.min, children: [
         VoicedIcon(
             peerId: peerId,
@@ -286,6 +300,21 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         ),
       ]));
     }
+
+    for (final i in _game.audienceMap.entries) {
+      final peerId = i.key;
+      final enabledAudio = _game.membersAudioState[peerId] ?? false;
+      widgets.add(Row(mainAxisSize: MainAxisSize.min, children: [
+        VoicedIcon(
+            peerId: peerId,
+            streamController: _streamController,
+            muted: !enabledAudio),
+        Text(
+          "${i.value}(${i.key})が観戦者として参加しました。",
+        ),
+      ]));
+    }
+
     return Column(children: widgets);
   }
 
@@ -321,6 +350,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     }
 
     final widgets = <Widget>[
+      AudienceVoiceIcons(
+          gameController: _game, streamController: _streamController),
       Stack(
         children: stacks,
         alignment: Alignment.center,
