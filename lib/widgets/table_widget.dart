@@ -70,6 +70,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         onVoiced: onVoiced,
         onReceivedChatMessage: onReceivedChatMessage);
 
+    /*
     Timer.periodic(
       const Duration(seconds: 3),
       (Timer timer) {
@@ -79,6 +80,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         }
       },
     );
+     */
   }
 
   void onSetupLocalAudio(bool enabled, String message) {
