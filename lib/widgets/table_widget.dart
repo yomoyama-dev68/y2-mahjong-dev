@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:y2_mahjong/dialogs/chat_dialog.dart';
 import 'package:y2_mahjong/dialogs/get_riichi_bar_score_dialog.dart';
 import 'package:y2_mahjong/dialogs/notify_dialog.dart';
 import 'package:y2_mahjong/dialogs/rollback_dialog.dart';
@@ -47,6 +48,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   late game.Game _game;
   bool showStageAndPlayerInfo = true;
   final _streamController = StreamController<String>.broadcast();
+  final _chatStreamController =
+      StreamController<MapEntry<String, String>>.broadcast();
 
   @override
   void initState() {
@@ -64,7 +67,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         onEventGameTable: onEventGameTable,
         onReceiveCommandResult: onReceiveCommandResult,
         onSetupLocalAudio: onSetupLocalAudio,
-        onVoiced: onVoiced);
+        onVoiced: onVoiced,
+        onReceivedChatMessage: onReceivedChatMessage);
 
     Timer.periodic(
       const Duration(seconds: 3),
@@ -196,6 +200,19 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     _streamController.sink.add(peerId);
   }
 
+  void onReceivedChatMessage(String peerId, String message) {
+    _chatStreamController.sink.add(MapEntry(peerId, message));
+    if (!ChatDialog.isOpening()) {
+      var name = _game.member[peerId];
+      name ??= _game.audienceMap[peerId];
+      name ??= 'unknown';
+      Fluttertoast.showToast(
+          msg: "${name}\n${message}",
+          webPosition: "center",
+          timeInSecForIosWeb: 5);
+    }
+  }
+
   Future<void> _setMyName({bool? asAudience}) async {
     if (widget.playerName != null) {
       _game.setMyName(widget.playerName!);
@@ -287,6 +304,12 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       Text(message)
     ];
 
+    widgets.add(FloatingActionButton(
+        child: const Text("チャット"),
+        onPressed: () {
+          showChatDialog();
+        }));
+
     for (final i in _game.member.entries) {
       final peerId = i.key;
       final enabledAudio = _game.membersAudioState[peerId] ?? false;
@@ -360,7 +383,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           gameData: _game,
           imageMap: _imageMap,
           tableSize: tableSize,
-          tappableTileScale: tappableTileScale)
+          tappableTileScale: tappableTileScale,
+          showChatDialog: showChatDialog)
     ];
 
     return Column(
@@ -374,6 +398,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       _uiImageMap.addAll(uiImageMap);
       _imageMap.addAll(imageMap);
     });
+  }
+
+  void showChatDialog() {
+    ChatDialog.showChatDialog(context, _game, _chatStreamController);
   }
 
   List<Widget> buildPlayerStateTiles(

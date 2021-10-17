@@ -50,7 +50,8 @@ class Game {
       required this.onChangeGameTableData,
       required this.onReceiveCommandResult,
       required this.onSetupLocalAudio,
-      required this.onVoiced}) {
+      required this.onVoiced,
+      required this.onReceivedChatMessage}) {
     print("Game:Game():1");
     table = Table(_tableOnUpdateTable, _onAcceptRollback);
     print("Game:Game():2");
@@ -94,6 +95,7 @@ class Game {
   final Function(CommandResult) onReceiveCommandResult;
   final Function(bool, String) onSetupLocalAudio;
   final Function(String) onVoiced;
+  final Function(String, String) onReceivedChatMessage;
 
   final member = <String, String>{}; // <Peer ID, Player Name>
   final lostPlayerNames = <String, String>{}; // <Player Name, Peer ID>
@@ -108,6 +110,7 @@ class Game {
   bool isAudience = false;
   String audienceAs = "";
   final audienceMap = <String, String>{}; // <Peer ID, Audience Name>
+  final chatMessages = <MapEntry<String, String>>[];
 
   var enabledAudio = false;
   var availableAudio = false;
@@ -237,6 +240,20 @@ class Game {
       if (data.existRiichiBar) return true;
     }
     return false;
+  }
+
+  void sendChatMessage(String message) {
+    final tmp = <String, dynamic>{
+      "type": "sendChatMessage",
+      "message": message,
+    };
+    skyWay.sendData(jsonEncode(tmp));
+    _onReceivedChatMessage(myPeerId, message);
+  }
+
+  _onReceivedChatMessage(String peerId, String message) {
+    chatMessages.add(MapEntry(peerId, message));
+    onReceivedChatMessage(peerId, message);
   }
 
   Map<String, Function> commandMap() {
@@ -591,7 +608,6 @@ class Game {
     final name = member.remove(peerId);
     lostPlayerNames[name!] = peerId;
     _setState(GameState.onWaitingOtherPlayersInGame);
-
   }
 
   void _skyWayOnClose() {
@@ -692,6 +708,12 @@ class Game {
       print("notifyAudioState: ${data}");
       final enabledAudio = data["enabledAudio"] as bool;
       _onChangeAudioState(senderPeerId, enabledAudio);
+    }
+
+    if (dataType == "sendChatMessage") {
+      print("sendChatMessage: ${data}");
+      final message = data["message"] as String;
+      _onReceivedChatMessage(senderPeerId, message);
     }
   }
 

@@ -13,11 +13,15 @@ import '../table_controller.dart' as tbl;
 
 class TableRibbonWidget extends StatefulWidget {
   const TableRibbonWidget(
-      {Key? key, required this.gameData, required this.imageMap})
+      {Key? key,
+      required this.gameData,
+      required this.imageMap,
+      required this.showChatDialog})
       : super(key: key);
 
   final game.Game gameData;
   final Map<String, Image> imageMap;
+  final Function showChatDialog;
 
   @override
   _TableRibbonWidgetState createState() => _TableRibbonWidgetState();
@@ -313,6 +317,10 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
           enabled: g().availableAudio,
         ),
         const PopupMenuItem<String>(
+          value: "chat",
+          child: Text('チャット'),
+        ),
+        const PopupMenuItem<String>(
           value: "licenses",
           child: Text("ライセンス"),
         ),
@@ -341,6 +349,9 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     }
     if (menu == "mute") {
       g().setEnabledAudio(false);
+    }
+    if (menu == "chat") {
+      widget.showChatDialog();
     }
     if (menu == "licenses") {
       rootBundle.loadString('assets/licenses.md').then((text) {

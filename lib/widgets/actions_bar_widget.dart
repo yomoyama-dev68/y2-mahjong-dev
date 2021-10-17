@@ -11,13 +11,15 @@ class ActionsBarWidget extends StatefulWidget {
       required this.gameData,
       required this.imageMap,
       required this.tableSize,
-      required this.tappableTileScale})
+      required this.tappableTileScale,
+      required this.showChatDialog})
       : super(key: key);
 
   final game.Game gameData;
   final Map<String, Image> imageMap;
   final double tableSize;
   final double tappableTileScale;
+  final Function showChatDialog;
 
   @override
   ActionsBarWidgetState createState() => ActionsBarWidgetState();
@@ -48,7 +50,11 @@ class ActionsBarWidgetState extends State<ActionsBarWidget> {
     }
     widgets.add(SizedBox(
       width: widget.tableSize,
-      child: TableRibbonWidget(gameData: g(), imageMap: widget.imageMap),
+      child: TableRibbonWidget(
+        gameData: g(),
+        imageMap: widget.imageMap,
+        showChatDialog: widget.showChatDialog,
+      ),
     ));
 
     return Column(children: widgets);
