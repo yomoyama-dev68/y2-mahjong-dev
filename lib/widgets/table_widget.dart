@@ -304,11 +304,24 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       Text(message)
     ];
 
-    widgets.add(FloatingActionButton(
-        child: const Text("チャット"),
-        onPressed: () {
-          showChatDialog();
-        }));
+    widgets.add(Row(mainAxisSize: MainAxisSize.min, children: [
+      ElevatedButton(
+        child: Text(_game.enabledAudio ? "ミュート" : "ミュートオフ"),
+        onPressed: _game.availableAudio
+            ? () {
+                _game.setEnabledAudio(!_game.enabledAudio);
+              }
+            : null,
+      ),
+      const SizedBox(
+        width: 10.0,
+      ),
+      ElevatedButton(
+          child: const Text("チャット"),
+          onPressed: () {
+            showChatDialog();
+          })
+    ]));
 
     for (final i in _game.member.entries) {
       final peerId = i.key;
