@@ -285,47 +285,52 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       tbl.TableState.drawable,
       tbl.TableState.processingFinishHand
     ].contains(g().table.state);
+    final isPlayer = g().member.keys.contains(g().myPeerId);
 
-    return PopupMenuButton<String>(
-      onSelected: _onSelectedPopupMenu,
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
+    final menus = <PopupMenuEntry<String>>[];
+    if (isPlayer) {
+      menus
+        ..add(const PopupMenuItem<String>(
           value: "openMyWall",
           child: Text("手牌オープン"),
-        ),
-        const PopupMenuItem<String>(
+        ))
+        ..add(const PopupMenuItem<String>(
           value: "startTradingScore",
           child: Text('点棒支払'),
-        ),
-        const PopupMenuItem<String>(
+        ))
+        ..add(const PopupMenuItem<String>(
           value: "changeLeaderContinuousCount",
           child: Text('場数変更'),
-        ),
-        PopupMenuItem<String>(
+        ))
+        ..add(PopupMenuItem<String>(
           value: "drawGame",
           child: const Text('流局'),
           enabled: enabledDrawGame,
-        ),
-        PopupMenuItem<String>(
+        ))
+        ..add(PopupMenuItem<String>(
           value: "rollback",
           child: const Text('巻き戻し'),
           enabled: rollbackable,
-        ),
-        PopupMenuItem<String>(
-          value: g().enabledAudio ? "mute" : "mute-off",
-          child: Text(g().enabledAudio ? "ミュート" : "ミュートオフ"),
-          enabled: g().availableAudio,
-        ),
-        const PopupMenuItem<String>(
-          value: "chat",
-          child: Text('チャット'),
-        ),
-        const PopupMenuItem<String>(
-          value: "licenses",
-          child: Text("ライセンス"),
-        ),
-      ],
-    );
+        ));
+    }
+    menus
+      ..add(PopupMenuItem<String>(
+        value: g().enabledAudio ? "mute" : "mute-off",
+        child: Text(g().enabledAudio ? "ミュート" : "ミュートオフ"),
+        enabled: g().availableAudio,
+      ))
+      ..add(const PopupMenuItem<String>(
+        value: "chat",
+        child: Text('チャット'),
+      ))
+      ..add(const PopupMenuItem<String>(
+        value: "licenses",
+        child: Text("ライセンス"),
+      ));
+
+    return PopupMenuButton<String>(
+        onSelected: _onSelectedPopupMenu,
+        itemBuilder: (BuildContext context) => menus);
   }
 
   void _onSelectedPopupMenu(String menu) {
