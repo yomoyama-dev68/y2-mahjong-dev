@@ -54,11 +54,9 @@ class VoicedIconState extends State<VoicedIcon>
 
   @override
   Widget build(BuildContext context) {
-    /*
     if (widget.muted) {
       return Icon(Icons.volume_off, color: widget.color);
     }
-     */
 
     return FadeTransition(
       opacity: animation,
