@@ -333,9 +333,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
             peerId: peerId,
             streamController: _streamController,
             muted: !enabledAudio),
-        Text(
-          "${i.value}(${i.key})が参加しました。",
-        ),
+        Flexible(
+            child: Text(
+          "${i.value}が参加しました。",
+          overflow: TextOverflow.clip,
+        )),
       ]));
     }
 
@@ -347,9 +349,11 @@ class _GameTableWidgetState extends State<GameTableWidget> {
             peerId: peerId,
             streamController: _streamController,
             muted: !enabledAudio),
-        Text(
-          "${i.value}(${i.key})が観戦者として参加しました。",
-        ),
+        Flexible(
+            child: Text(
+          "${i.value}が観戦者として参加しました。",
+          overflow: TextOverflow.clip,
+        )),
       ]));
     }
 
