@@ -79,7 +79,7 @@ class Websocket_Server():
         self.server.set_fn_message_received(self.message_received) 
         self.server.run_forever()
 
-IP_ADDR = "localhost" # IPアドレスを指定
+IP_ADDR = "192.168.0.2" # "localhost" # IPアドレスを指定
 PORT=9999 # ポートを指定
 ws_server = Websocket_Server(IP_ADDR, PORT)
 ws_server.run()
