@@ -624,8 +624,10 @@ class Game {
     }
 
     if (dataType == "notifyMyNameAsAudience") {
+      print("notifyMyNameAsAudience: ${data}");
       final name = data["name"] as String;
       audienceMap[senderPeerId] = name;
+      onVoiced(senderPeerId); // あまり良くないけど、この関数で、観客が追加されたことを通知。
     }
 
     if (dataType == "notifyMember") {
