@@ -1071,4 +1071,17 @@ class Table extends TableData {
   handleSetLeaderContinuousCount({required String peerId, required int count}) {
     setLeaderContinuousCount(count);
   }
+
+  bool isInProcessingFinishHand() {
+    return [
+      TableState.processingFinishHand,
+      TableState.waitingNextHandForNextLeader,
+      TableState.waitingNextHandForPreviousLeader,
+      TableState.waitingNextHandForNextLeader,
+      TableState.waitingNextHandForContinueLeader,
+      TableState.waitingGetRiichiBarScore,
+      TableState.waitingGameReset,
+      TableState.waitingRollbackFromProcessingFinishHand,
+    ].contains(state);
+  }
 }
