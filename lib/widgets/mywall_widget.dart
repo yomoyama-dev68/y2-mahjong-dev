@@ -49,6 +49,7 @@ class MyWallWidgetState extends State<MyWallWidget> {
     }
 
     final row = Row(
+      mainAxisSize: MainAxisSize.min,
       children: widgets,
     );
     final content = tappable
@@ -59,7 +60,7 @@ class MyWallWidgetState extends State<MyWallWidget> {
           );
 
     return SingleChildScrollView(
-        child: content, scrollDirection: Axis.horizontal);
+        reverse: true, child: content, scrollDirection: Axis.horizontal);
   }
 
   Widget _buildDisabledTile(int tile, bool _) {
@@ -74,20 +75,22 @@ class MyWallWidgetState extends State<MyWallWidget> {
   Widget _buildTile(int tile, bool selecting) {
     const scale = 0.8;
     return Container(
-        child: Ink.image(
-          image: getTileImage(tile).image,
-          height: 59.0 / scale,
-          width: 33.0 / scale,
-          child: InkWell(
-            onTap: () => _onTapTile(tile),
-            child: const SizedBox(),
-          ),
-        ),
-        decoration: selecting
-            ? BoxDecoration(
-                border: Border.all(color: Colors.red),
-              )
-            : null);
+        child: Container(
+            child: Ink.image(
+              image: getTileImage(tile).image,
+              height: 59.0 / scale,
+              width: 33.0 / scale,
+              child: InkWell(
+                onTap: () => _onTapTile(tile),
+                child: const SizedBox(),
+              ),
+            ),
+            decoration: selecting
+                ? BoxDecoration(
+                    border: Border.all(color: Colors.red),
+                  )
+                : null),
+        padding: EdgeInsets.fromLTRB(0, 0, 0, selecting ? 12 : 0));
   }
 
   bool _isTappableState() {

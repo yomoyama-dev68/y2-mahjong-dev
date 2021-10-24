@@ -68,14 +68,14 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
       RenderBox? box1 =
           globalKey1.currentContext!.findRenderObject() as RenderBox?;
       if (box1 != null) {
-        print(
-            "box1.size: ${box1.size}, pos:${box1.localToGlobal(Offset.zero)}");
+        // print("box1.size: ${box1.size}, "
+        //    "pos:${box1.localToGlobal(Offset.zero)}");
       }
       RenderBox? box2 =
           globalKey2.currentContext!.findRenderObject() as RenderBox?;
       if (box2 != null) {
-        print(
-            "box2.size: ${box2.size}, pos:${box2.localToGlobal(Offset.zero)}");
+        // print(
+        //    "box2.size: ${box2.size}, pos:${box2.localToGlobal(Offset.zero)}");
         if (lastScrollViewSize != box2.size.width - 20) {
           setState(() {
             lastScrollViewSize = box2.size.width - 20;

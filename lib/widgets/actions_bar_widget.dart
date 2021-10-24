@@ -45,7 +45,7 @@ class ActionsBarWidgetState extends State<ActionsBarWidget> {
         SizedBox(
             width: widget.tableSize,
             height: widgetH,
-            child: _buildTilesWidget()),
+            child: Center(child: _buildTilesWidget())),
       );
     }
     widgets.add(SizedBox(
