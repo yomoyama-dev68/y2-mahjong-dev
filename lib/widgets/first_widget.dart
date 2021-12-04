@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:y2_mahjong/dialogs/notify_dialog.dart';
 import 'dart:html';
 
 import 'package:y2_mahjong/widgets/top_icon.dart';
+import 'dart:ui' as ui;
+
 
 class FirstWidget extends StatelessWidget {
   const FirstWidget({Key? key, required this.roomId}) : super(key: key);
@@ -40,7 +43,7 @@ class FirstWidget extends StatelessWidget {
         FloatingActionButton(
             onPressed: () {
               window.open(
-                  'https://developer.mozilla.org/ja/docs/Web/API/Window/open',
+                  'https://github.com/harayama-dev68/y2_mahjong_help',
                   '');
             },
             child: const Text("遊び方"))

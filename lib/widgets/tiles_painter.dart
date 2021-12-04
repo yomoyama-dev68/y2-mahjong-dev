@@ -102,7 +102,33 @@ class DrawObject {
 }
 
 class TilesPainter {
-  TilesPainter(this.myPeerId, this._tableData, this._imageMap);
+  static bool? _canOpacity = null;
+
+  static void _setCanOpacity() async {
+    if (_canOpacity != null) return;
+    try {
+      final recoder1 = ui.PictureRecorder();
+      final canvas1 = Canvas(recoder1);
+      canvas1.drawColor(Colors.black, BlendMode.src);
+      final image1 = await recoder1.endRecording().toImage(1, 1);
+
+      final recoder2 = ui.PictureRecorder();
+      final canvas2 = Canvas(recoder2);
+      canvas2.drawColor(Colors.white, BlendMode.src);
+      final paint = Paint();
+      paint.color = const Color.fromRGBO(0, 0, 0, 0.5);
+      canvas2.drawImage(image1, const Offset(0, 0), paint);
+      final image2 = await recoder2.endRecording().toImage(1, 1);
+      final data2 = await image2.toByteData();
+      _canOpacity = (data2!.getUint32(0) != 0);
+    } catch (e) {
+      _canOpacity = false;
+    }
+  }
+
+  TilesPainter(this.myPeerId, this._tableData, this._imageMap) {
+    _setCanOpacity();
+  }
 
   final String myPeerId;
   final tbl.Table _tableData; // <PeerId, プレイヤーデータ> 親順ソート済み
@@ -152,9 +178,9 @@ class TilesPainter {
   void drawOpenedTilesPerDirection(List<DrawObject> drawObjects,
       tbl.PlayerData data, int direction, Offset originOffset) {
     final baseColPos =
-    isPortrait(direction) ? originOffset.dx : originOffset.dy;
+        isPortrait(direction) ? originOffset.dx : originOffset.dy;
     final baseRowPos =
-    isPortrait(direction) ? originOffset.dy : originOffset.dx;
+        isPortrait(direction) ? originOffset.dy : originOffset.dx;
 
     var varColPos = baseColPos;
     void __addDrawObject(int tile) {
@@ -203,10 +229,17 @@ class TilesPainter {
     drawObjects.sort((a, b) => a.pos.dy.compareTo(b.pos.dy));
     final normalPaint = Paint();
     final calledTilePaint = Paint();
-    calledTilePaint.color = const Color.fromRGBO(0, 0, 0, 0.6);
+    calledTilePaint.color = const Color.fromRGBO(0, 0, 0, 0.5);
+    calledTilePaint.blendMode = BlendMode.srcOver;
     for (final item in drawObjects) {
-      final paint = item.isCalled ? calledTilePaint : normalPaint;
-      canvas.drawImage(item.image, item.pos, paint);
+      if (item.isCalled) {
+        canvas.drawImage(item.image, item.pos, normalPaint);
+        final rect = ui.Rect.fromLTWH(item.pos.dx, item.pos.dy,
+            item.image.width.toDouble(), item.image.height.toDouble());
+        canvas.drawRect(rect, calledTilePaint);
+      } else {
+        canvas.drawImage(item.image, item.pos, normalPaint);
+      }
     }
   }
 
@@ -262,9 +295,9 @@ class TilesPainter {
   void drawDiscardTilesPerDirection(List<DrawObject> drawObjects,
       tbl.PlayerData data, int direction, Offset originOffset) {
     final baseColPos =
-    isPortrait(direction) ? originOffset.dx : originOffset.dy;
+        isPortrait(direction) ? originOffset.dx : originOffset.dy;
     final baseRowPos =
-    isPortrait(direction) ? originOffset.dy : originOffset.dx;
+        isPortrait(direction) ? originOffset.dy : originOffset.dx;
 
     var varColPos = baseColPos;
     for (var index = 0; index < data.discardedTiles.length; index++) {
@@ -359,8 +392,8 @@ class TilesPainter {
     return const Offset(0, 0);
   }
 
-  Offset offsetForDrawCalledTiles(int direction, ui.Image image, int stepMode,
-      int tileThickness) {
+  Offset offsetForDrawCalledTiles(
+      int direction, ui.Image image, int stepMode, int tileThickness) {
     // return Offset(dx: Col, dy: Row)
     final base = baseOffsetForDrawCalledTiles(direction, image);
     if (stepMode != 2) {
@@ -444,14 +477,15 @@ class TilesPainter {
     return tileDirectionMap;
   }
 
-  Offset drawCalledTilesPerDirection2(List<DrawObject> drawObjects,
+  Offset drawCalledTilesPerDirection2(
+      List<DrawObject> drawObjects,
       String peerId,
       tbl.CalledTiles tiles,
       int direction,
       Offset baseOffset,
       tbl.TableData tableData) {
     final tileDirectionMap =
-    createCalledTileDirectionMap(peerId, tiles, direction, tableData);
+        createCalledTileDirectionMap(peerId, tiles, direction, tableData);
     var baseColPos = isPortrait(direction) ? baseOffset.dx : baseOffset.dy;
     var baseRowPos = isPortrait(direction) ? baseOffset.dy : baseOffset.dx;
 
@@ -467,7 +501,7 @@ class TilesPainter {
       }
 
       final posOffset =
-      offsetForDrawCalledTiles(direction, image, stepMode, tileThickness);
+          offsetForDrawCalledTiles(direction, image, stepMode, tileThickness);
       final colPos = baseColPos + posOffset.dx;
       var rowPos = baseRowPos + posOffset.dy;
 
@@ -508,7 +542,7 @@ class TilesPainter {
       final cols = i % 5;
       final rows = i ~/ 5;
       final drawPos =
-      baseOffset.translate(cols * tileWidth, rows * -tileThickness);
+          baseOffset.translate(cols * tileWidth, rows * -tileThickness);
       drawObjects.add(DrawObject(image, drawPos, false));
     }
 
@@ -532,8 +566,8 @@ class TilesPainter {
     final tileWidth = closeTileImage.width.toDouble();
     final tileHeight = closeTileImage.height.toDouble();
 
-    final baseOffset = size.center(
-        Offset(-tileWidth * 2.5, -tileHeight + tileThickness));
+    final baseOffset =
+        size.center(Offset(-tileWidth * 2.5, -tileHeight + tileThickness));
 
     for (var i = 0; i < 10; i++) {
       final cols = i % 5;
@@ -575,7 +609,7 @@ class TilesPainter {
     for (var i = 0; i < data.drawnTile.length; i++) {
       final image = getTileImage(data.drawnTile[i], tileDirection);
       final drawPos =
-      baseOffset.translate(data.tiles.length * tileWidth + 10, -tileHeight);
+          baseOffset.translate(data.tiles.length * tileWidth + 10, -tileHeight);
       drawObjects.add(DrawObject(image, drawPos, false));
     }
 

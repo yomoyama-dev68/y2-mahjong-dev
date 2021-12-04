@@ -15,9 +15,10 @@ Duration _rduration(int range, [int offset = 1]) {
   return Duration(seconds: random.nextInt(range) + offset);
 }
 
-void newPeer(
-    String peerId, String key, int debug, Function(String) onOpenCallback) {
+void newPeer(String peerId, String key, int debug,
+    Function(String) onOpenCallback, Function(String) onErrorCallback) {
   Timer(_rduration(1), () => onOpenCallback(peerId));
+  //Timer(_rduration(10), () => onErrorCallback("ダミーエラーメッセージ"));
 }
 
 void joinRoom(

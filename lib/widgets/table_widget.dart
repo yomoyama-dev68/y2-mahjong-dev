@@ -68,7 +68,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         onReceiveCommandResult: onReceiveCommandResult,
         onSetupLocalAudio: onSetupLocalAudio,
         onVoiced: onVoiced,
-        onReceivedChatMessage: onReceivedChatMessage);
+        onReceivedChatMessage: onReceivedChatMessage,
+        onError: onSkyWayError);
 
     /*
     Timer.periodic(
@@ -85,7 +86,7 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   void onSetupLocalAudio(bool enabled, String message) {
     if (!enabled) {
-      showNotifyDialog(context, "マイクを発見できませんでした。(${message})");
+      showNotifyDialog(context, message: "マイクを発見できませんでした。(${message})");
     }
   }
 
@@ -155,8 +156,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
         showGetRiichiBarScoreDialogAll(context, _game);
       }
       if (_game.table.lastWinner != _game.myPeerId) {
-        final winnerName = _game.member[_game.table.lastWinner]!;
-        showNotifyDialog(context, "${winnerName}さんがアガリました。");
+        final winnerName = _game.member[_game.table.lastWinner];
+        if (winnerName != null) {
+          showNotifyDialog(context, message: "${winnerName}さんがアガリました。");
+        }
       }
     }
   }
@@ -308,10 +311,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
     widgets.add(Row(mainAxisSize: MainAxisSize.min, children: [
       ElevatedButton(
-        child: Text(_game.enabledAudio ? "ミュート" : "ミュートオフ"),
-        onPressed: _game.availableAudio
+        child: Text(_game.enabledMic ? "マイクOff" : "マイクOn"),
+        onPressed: _game.availableMic
             ? () {
-                _game.setEnabledAudio(!_game.enabledAudio);
+                _game.setEnabledMic(!_game.enabledMic);
               }
             : null,
       ),
@@ -327,12 +330,12 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
     for (final i in _game.member.entries) {
       final peerId = i.key;
-      final enabledAudio = _game.membersAudioState[peerId] ?? false;
+      final micOn = _game.membersAudioState[peerId] ?? false;
       widgets.add(Row(mainAxisSize: MainAxisSize.min, children: [
         VoicedIcon(
             peerId: peerId,
             streamController: _streamController,
-            muted: !enabledAudio),
+            micOff: !micOn),
         Flexible(
             child: Text(
           "${i.value}が参加しました。",
@@ -343,12 +346,12 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
     for (final i in _game.audienceMap.entries) {
       final peerId = i.key;
-      final enabledAudio = _game.membersAudioState[peerId] ?? false;
+      final micOn = _game.membersAudioState[peerId] ?? false;
       widgets.add(Row(mainAxisSize: MainAxisSize.min, children: [
         VoicedIcon(
             peerId: peerId,
             streamController: _streamController,
-            muted: !enabledAudio),
+            micOff: !micOn),
         Flexible(
             child: Text(
           "${i.value}が観戦者として参加しました。",
@@ -417,6 +420,10 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       _uiImageMap.addAll(uiImageMap);
       _imageMap.addAll(imageMap);
     });
+  }
+
+  void onSkyWayError(String message) {
+    showNotifyDialog(context, title: "SkyWayエラー", message: message);
   }
 
   void showChatDialog() {

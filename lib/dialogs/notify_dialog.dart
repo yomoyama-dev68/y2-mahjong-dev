@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
-void showNotifyDialog(BuildContext context, String message) {
+void showNotifyDialog(BuildContext context, {String? title, String? message}) {
   showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(message),
+          title: title == null ? null : Text(title),
+          content: message == null ? null : Text(message),
           actions: <Widget>[
             SimpleDialogOption(
               child: const Text('OK'),

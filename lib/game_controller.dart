@@ -7,7 +7,7 @@ import 'commad_handler.dart';
 
 const skyWayKey = '05bd41ee-71ec-4d8b-bd68-f6b7e1172b76';
 const roomMode = "mesh";
-const useStab = true;
+const useStab = false;
 const soundOnlyOwner = false;
 
 enum GameState {
@@ -51,7 +51,8 @@ class Game {
       required this.onReceiveCommandResult,
       required this.onSetupLocalAudio,
       required this.onVoiced,
-      required this.onReceivedChatMessage}) {
+      required this.onReceivedChatMessage,
+      required Function(String) onError}) {
     print("Game:Game():1");
     table = Table(_tableOnUpdateTable, _onAcceptRollback);
     print("Game:Game():2");
@@ -59,8 +60,8 @@ class Game {
     print("Game:Game():3");
     skyWay.setupLocalAudio((enabled, message) {
       print("Game:Game():3-1");
-      enabledAudio = enabled;
-      availableAudio = enabled;
+      enabledMic = enabled;
+      availableMic = enabled;
       onSetupLocalAudio(enabled, message);
       print("Game:Game():3-2");
       skyWay.newPeer(skyWayKey, 3, (peerId) {
@@ -80,7 +81,7 @@ class Game {
             _skyWayOnPeerLeave,
             _skyWayOnClose);
         print("Game:Game():7");
-      });
+      }, onError);
     }, _onVoicedMyself);
   }
 
@@ -112,8 +113,8 @@ class Game {
   final audienceMap = <String, String>{}; // <Peer ID, Audience Name>
   final chatMessages = <MapEntry<String, String>>[];
 
-  var enabledAudio = false;
-  var availableAudio = false;
+  var enabledMic = false;
+  var availableMic = false;
 
   final tableDataLogs = <Map<String, dynamic>>[];
   final Map<String, bool> membersAudioState = <String, bool>{};
@@ -139,17 +140,17 @@ class Game {
     onChangeGameState(oldState, state);
   }
 
-  setEnabledAudio(bool enabled) {
-    if (availableAudio) {
-      enabledAudio = enabled;
-      skyWay.setEnabledAudio(enabled);
+  setEnabledMic(bool enabled) {
+    if (availableMic) {
+      enabledMic = enabled;
+      skyWay.setEnabledMic(enabled);
 
       final tmp = <String, dynamic>{
-        "type": "notifyAudioState",
-        "enabledAudio": enabledAudio,
+        "type": "notifyMicState",
+        "enabledMic": enabledMic,
       };
       skyWay.sendData(jsonEncode(tmp));
-      _onChangeAudioState(myPeerId, enabledAudio);
+      _onChangeMicState(myPeerId, enabledMic);
     }
   }
 
@@ -169,11 +170,11 @@ class Game {
 
     Future.delayed(const Duration(milliseconds: 500)).then((_) {
       final tmp2 = <String, dynamic>{
-        "type": "notifyAudioState",
-        "enabledAudio": enabledAudio,
+        "type": "notifyMicState",
+        "enabledMic": enabledMic,
       };
       skyWay.sendData(jsonEncode(tmp2));
-      _onChangeAudioState(myPeerId, enabledAudio);
+      _onChangeMicState(myPeerId, enabledMic);
     });
 
     _onUpdateMemberMap(myPeerId, name);
@@ -581,8 +582,8 @@ class Game {
 
     Future.delayed(const Duration(milliseconds: 500)).then((_) {
       final tmp2 = <String, dynamic>{
-        "type": "notifyAudioState",
-        "enabledAudio": enabledAudio,
+        "type": "notifyMicState",
+        "enabledMic": enabledMic,
       };
       skyWay.sendData(jsonEncode(tmp2));
     });
@@ -706,10 +707,10 @@ class Game {
       onVoiced(senderPeerId);
     }
 
-    if (dataType == "notifyAudioState") {
-      print("notifyAudioState: ${data}");
-      final enabledAudio = data["enabledAudio"] as bool;
-      _onChangeAudioState(senderPeerId, enabledAudio);
+    if (dataType == "notifyMicState") {
+      print("notifyMicState: ${data}");
+      final enabledMic = data["enabledMic"] as bool;
+      _onChangeMicState(senderPeerId, enabledMic);
     }
 
     if (dataType == "sendChatMessage") {
@@ -719,10 +720,10 @@ class Game {
     }
   }
 
-  void _onChangeAudioState(senderPeerId, enabledAudio) {
+  void _onChangeMicState(senderPeerId, enabledAudio) {
     membersAudioState[senderPeerId] = enabledAudio;
-    print("_onChangeAudioState: ${membersAudioState}");
-    onEventGameTable("onChangeAudioState");
+    print("_onChangeMicState: ${membersAudioState}");
+    onEventGameTable("onChangeMicState");
   }
 
   void _notifyUpdatedTableData(

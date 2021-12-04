@@ -5,7 +5,7 @@ class VoicedIcon extends StatefulWidget {
   const VoicedIcon({
     required this.peerId,
     required this.streamController,
-    this.muted = false,
+    this.micOff = false,
     this.color = Colors.black,
     Key? key,
   }) : super(key: key);
@@ -13,7 +13,7 @@ class VoicedIcon extends StatefulWidget {
   final String peerId;
   final StreamController<String> streamController;
   final Color color;
-  final bool muted;
+  final bool micOff;
 
   @override
   State<VoicedIcon> createState() => VoicedIconState();
@@ -54,13 +54,13 @@ class VoicedIconState extends State<VoicedIcon>
 
   @override
   Widget build(BuildContext context) {
-    if (widget.muted) {
-      return Icon(Icons.volume_off, color: widget.color);
+    if (widget.micOff) {
+      return Icon(Icons.mic_off, color: widget.color);
     }
 
     return FadeTransition(
       opacity: animation,
-      child: Icon(Icons.volume_up, color: widget.color),
+      child: Icon(Icons.mic, color: widget.color),
     );
   }
 }

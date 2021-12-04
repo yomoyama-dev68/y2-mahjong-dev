@@ -315,9 +315,9 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
     }
     menus
       ..add(PopupMenuItem<String>(
-        value: g().enabledAudio ? "mute" : "mute-off",
-        child: Text(g().enabledAudio ? "ミュート" : "ミュートオフ"),
-        enabled: g().availableAudio,
+        value: g().enabledMic ? "mic-off" : "mic-on",
+        child: Text(g().enabledMic ? "マイクOff" : "マイクOn"),
+        enabled: g().availableMic,
       ))
       ..add(const PopupMenuItem<String>(
         value: "chat",
@@ -349,11 +349,11 @@ class _TableRibbonWidgetState extends State<TableRibbonWidget> {
         }
       });
     }
-    if (menu == "mute-off") {
-      g().setEnabledAudio(true);
+    if (menu == "mic-on") {
+      g().setEnabledMic(true);
     }
-    if (menu == "mute") {
-      g().setEnabledAudio(false);
+    if (menu == "mic-off") {
+      g().setEnabledMic(false);
     }
     if (menu == "chat") {
       widget.showChatDialog();

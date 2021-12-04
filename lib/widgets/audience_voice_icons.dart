@@ -138,7 +138,7 @@ class AudienceVoiceIconsState extends State<AudienceVoiceIcons> {
             VoicedIcon(
               peerId: peerId,
               streamController: widget.streamController,
-              muted: !enabledAudio,
+              micOff: !enabledAudio,
               color: Colors.white,
             ),
             const SizedBox(

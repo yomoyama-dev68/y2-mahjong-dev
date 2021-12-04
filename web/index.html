@@ -83,13 +83,13 @@
         console.log('index: setupLocalAudio: X');
     }
 
-    function setEnabledAudio(enabled) {
-      console.log('index: setEnabledAudio: E');
+    function setEnabledMic(enabled) {
+      console.log('index: setEnabledMic: E');
       if (localStream !== 'undefined') {
         console.log(localStream.getAudioTracks());
         localStream.getAudioTracks()[0].enabled = enabled;
       }
-      console.log('index: setEnabledAudio: X');
+      console.log('index: setEnabledMic: X');
     }
 
     function analyseVoiceLooper(onAnalyseVoiceLoop) {
@@ -103,10 +103,14 @@
       console.log('index: analyseVoiceLooper: X');
     }
 
-    function newPeer(key, debug, onOpenCallback) {
+    function newPeer(key, debug, onOpenCallback, onErrorCallback) {
       console.log('index: newPeer: E');
       peer = new Peer({key: key, debug: debug});
       peer.once('open', id => onOpenCallback(id));
+      peer.on("error", (error) => {
+        console.log(`${error.type}: ${error.message}`);
+        onErrorCallback(`${error.type}: ${error.message}`);
+      });
       console.log('index: newPeer: X');
       return;
     }

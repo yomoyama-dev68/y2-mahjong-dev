@@ -2,15 +2,16 @@ import 'package:js/js.dart';
 import 'package:uuid/uuid.dart';
 import 'skyway_stab.dart' as stab;
 
-@JS('setEnabledAudio')
-external void _setEnabledAudio(bool enabled);
+@JS('setEnabledMic')
+external void _setEnabledMic(bool enabled);
 
 @JS('setupLocalAudio')
 external void _setupLocalAudio(
     Function(bool, String) onSetupLocalAudio, Function(int) onAnalyseVoiceLoop);
 
 @JS('newPeer')
-external void _newPeer(String key, int debug, Function(String) onOpenCallback);
+external void _newPeer(String key, int debug, Function(String) onOpenCallback,
+    Function(String) onErrorCallback);
 
 @JS('joinRoom')
 external void _joinRoom(
@@ -35,8 +36,8 @@ class SkyWayHelper {
   final bool useStab;
   final peerId = const Uuid().v4();
 
-  void setEnabledAudio(bool enabled) {
-    _setEnabledAudio(enabled);
+  void setEnabledMic(bool enabled) {
+    _setEnabledMic(enabled);
   }
 
   void setupLocalAudio(Function(bool, String) onSetupLocalAudio,
@@ -45,11 +46,11 @@ class SkyWayHelper {
         allowInterop(onSetupLocalAudio), allowInterop(onAnalyseVoiceLoop));
   }
 
-  void newPeer(String key, int debug, Function(String) onOpenCallback) {
+  void newPeer(String key, int debug, Function(String) onOpenCallback, Function(String) onErrorCallback) {
     if (useStab) {
-      stab.newPeer(peerId, key, debug, allowInterop(onOpenCallback));
+      stab.newPeer(peerId, key, debug, allowInterop(onOpenCallback), allowInterop(onErrorCallback));
     } else {
-      _newPeer(key, debug, allowInterop(onOpenCallback));
+      _newPeer(key, debug, allowInterop(onOpenCallback), allowInterop(onErrorCallback));
     }
   }
 

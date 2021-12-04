@@ -80,7 +80,7 @@ class PlayerStateTile extends StatelessWidget {
                       peerId: peerId,
                       streamController: streamController,
                       color: Colors.white,
-                      muted: muted,
+                      micOff: muted,
                     ))
               ],
             )));

@@ -498,6 +498,7 @@ class Table extends TableData {
 
   void _nextTurn(String peerId) {
     if (wallTiles.isEmpty) {
+      lastWinner = "";
       _onDrawGame(); // 流局
     } else {
       _turnTo(_nextPeerId(peerId));
@@ -512,7 +513,6 @@ class Table extends TableData {
     state = TableState.drawGame;
     _updateTableListener("_onDrawGame1");
     await Future.delayed(const Duration(seconds: 1));
-
     state = TableState.processingFinishHand;
     _updateTableListener("_onDrawGame2");
   }
