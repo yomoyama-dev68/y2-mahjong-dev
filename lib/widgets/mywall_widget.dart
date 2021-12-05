@@ -30,46 +30,43 @@ class MyWallWidgetState extends State<MyWallWidget> {
   }
 
   Widget _buildMyWall() {
-    final tappable = _isTappableState();
-
     final selectingTiles = g().myTurnTempState.selectingTiles;
     final myData = g().table.playerData(g().myPeerId)!;
     final widgets = <Widget>[];
-    final builder = tappable ? _buildTile : _buildDisabledTile;
 
-    // 持ち牌
+    // 持ち牌(リーチ中は選択できないようにする。)
+    final tappable = _isTappableState();
+    final builderForMyWall = tappable ? _buildTile : _buildDisabledTile;
     for (final tile in myData.tiles) {
-      widgets.add(builder(tile, selectingTiles.contains(tile)));
+      widgets.add(builderForMyWall(tile, selectingTiles.contains(tile)));
     }
     // ツモ牌
     if (myData.drawnTile.isNotEmpty) {
       widgets.add(const SizedBox(width: (33 / 0.8) / 2));
       final tile = myData.drawnTile.first;
-      widgets.add(builder(tile, selectingTiles.contains(tile)));
+      widgets.add(_buildTile(tile, selectingTiles.contains(tile)));
     }
 
     final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: widgets,
     );
-    final content = tappable
-        ? Material(child: row)
-        : Opacity(
-            opacity: 0.5,
-            child: row,
-          );
 
     return SingleChildScrollView(
-        reverse: true, child: content, scrollDirection: Axis.horizontal);
+        reverse: true,
+        child: Material(child: row),
+        scrollDirection: Axis.horizontal);
   }
 
   Widget _buildDisabledTile(int tile, bool _) {
     const scale = 0.8;
-    return SizedBox(
-      child: getTileImage(tile),
-      height: 59.0 / scale,
-      width: 33.0 / scale,
-    );
+    return Opacity(
+        opacity: 0.5,
+        child: SizedBox(
+          child: getTileImage(tile),
+          height: 59.0 / scale,
+          width: 33.0 / scale,
+        ));
   }
 
   Widget _buildTile(int tile, bool selecting) {
@@ -97,6 +94,12 @@ class MyWallWidgetState extends State<MyWallWidget> {
     if (!g().isMyTurn()) {
       return false;
     }
+    final myData = g().table.playerData(g().myPeerId)!;
+    if (myData.riichiTile.isNotEmpty == true) {
+      if (g().myTurnTempState.onCalledFor != "closeKan") {
+        return false;
+      }
+    }
 
     int limit = g().selectableTilesQuantity();
     if (limit > 0) {
@@ -109,6 +112,7 @@ class MyWallWidgetState extends State<MyWallWidget> {
     ].contains(g().table.state)) {
       return true;
     }
+
     return false;
   }
 
