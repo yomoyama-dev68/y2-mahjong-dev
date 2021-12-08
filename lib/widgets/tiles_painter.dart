@@ -299,6 +299,9 @@ class TilesPainter {
     final baseRowPos =
         isPortrait(direction) ? originOffset.dy : originOffset.dx;
 
+    final stepPerRowPos = stepRowPos(
+        direction, getTileImage(0, direction), isPortrait(direction) ? 14 : 16);
+
     var varColPos = baseColPos;
     for (var index = 0; index < data.discardedTiles.length; index++) {
       final tile = data.discardedTiles[index];
@@ -310,7 +313,7 @@ class TilesPainter {
 
       final rows = index ~/ 6;
       final varRowPos =
-          baseRowPos + rows * stepRowPos(direction, image, tileThickness);
+          baseRowPos + rows * stepPerRowPos;
       final rowPos = varRowPosToRowPos(direction, image, varRowPos).toDouble();
 
       if (index % 6 == 0) {
