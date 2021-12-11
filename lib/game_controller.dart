@@ -40,19 +40,18 @@ class MyTurnTempState {
 }
 
 class Game {
-  Game(
-      {required this.roomId,
-      required this.onChangeGameState,
-      required this.onChangeMember,
-      required this.onChangeGameTableState,
-      required this.onRequestScore,
-      required this.onEventGameTable,
-      required this.onChangeGameTableData,
-      required this.onReceiveCommandResult,
-      required this.onSetupLocalAudio,
-      required this.onVoiced,
-      required this.onReceivedChatMessage,
-      required Function(String) onError}) {
+  Game({required this.roomId,
+    required this.onChangeGameState,
+    required this.onChangeMember,
+    required this.onChangeGameTableState,
+    required this.onRequestScore,
+    required this.onEventGameTable,
+    required this.onChangeGameTableData,
+    required this.onReceiveCommandResult,
+    required this.onSetupLocalAudio,
+    required this.onVoiced,
+    required this.onReceivedChatMessage,
+    required Function(String) onError}) {
     print("Game:Game():1");
     table = Table(_tableOnUpdateTable, _onAcceptRollback);
     print("Game:Game():2");
@@ -644,7 +643,9 @@ class Game {
       print(
           "notifyMember: myPeerId=${myPeerId}, member=${member}, lostMember=${lostMember}");
       print(
-          "notifyMember: lostMember.isNotEmpty=${lostMember.isNotEmpty}, !member.containsKey(myPeerId)=${!member.containsKey(myPeerId)}");
+          "notifyMember: lostMember.isNotEmpty=${lostMember
+              .isNotEmpty}, !member.containsKey(myPeerId)=${!member.containsKey(
+              myPeerId)}");
       if (isAudience == false) {
         if (lostMember.isNotEmpty && !member.containsKey(myPeerId)) {
           lostPlayerNames
@@ -695,7 +696,7 @@ class Game {
 
     if (dataType == "rollback") {
       final logs =
-          (data["tableDataLogs"] as List).map((e) => e as Map<String, dynamic>);
+      (data["tableDataLogs"] as List).map((e) => e as Map<String, dynamic>);
       tableDataLogs.clear();
       tableDataLogs.addAll(logs);
       final lastData = tableDataLogs.removeLast();
@@ -726,9 +727,14 @@ class Game {
     onEventGameTable("onChangeMicState");
   }
 
-  void _notifyUpdatedTableData(
-      Map<String, dynamic> oldData, Map<String, dynamic> newData) {
+  void _notifyUpdatedTableData(Map<String, dynamic> oldData,
+      Map<String, dynamic> newData) {
     print("_notifyUpdatedTableData: ${myPeerId}, ${newData["updatedFor"]}");
+
+    if (newData["updatedFor"] == "_setupHand1") {
+      tableDataLogs.clear();
+    }
+
     tableDataLogs.add(newData);
 
     if (oldData["state"] != newData["state"]) {
