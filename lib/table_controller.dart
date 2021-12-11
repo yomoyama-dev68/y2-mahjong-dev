@@ -698,7 +698,8 @@ class Table extends TableData {
     data.tiles.addAll(data.drawnTile);
     data.drawnTile.clear();
     for (final tile in selectedTiles) {
-      assert(data.tiles.remove(tile));
+      data.tiles.remove(tile);
+      // assert(data.tiles.remove(tile));
     }
 
     data.drawnTile.add(replacementTiles.removeLast()); // 嶺上牌を手牌に移動する。
