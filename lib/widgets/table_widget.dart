@@ -247,6 +247,12 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   Future<void> _rejoin() async {
     NameSetDialog.close();
+    for (final e in _game.lostPlayerNames.entries) {
+      if (e.value == _game.myPeerId) {
+        _game.rejoinAs(e.key);
+        return;
+      }
+    }
     while (true) {
       final name = await RejoinNameSelectDialog.show(
           context, _game.lostPlayerNames.keys.toList());

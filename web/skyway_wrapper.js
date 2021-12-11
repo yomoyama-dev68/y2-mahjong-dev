@@ -8,6 +8,16 @@
     let audioGainNode;
     let audioAnalyser;
     let audioDataArray;
+    let mypeerid;
+
+    for(var c of document.cookie.split(';')){ //一つ一つ取り出して
+        var cArray = c.split('='); //さらに=で分割して配列に
+        console.log(cArray);
+        if( cArray[0].trim() == 'mypeerid'){ // 取り出したいkeyと合致したら
+            mypeerid = cArray[1];
+            console.log(mypeerid);  // [key,value]
+        }
+    }
 
     function setupLocalAudio(onSetupLocalAudio, onAnalyseVoiceLoop) {
         console.log('index: setupLocalAudio: E');
@@ -66,8 +76,20 @@
 
     function newPeer(key, debug, onOpenCallback, onErrorCallback) {
       console.log('index: newPeer: E');
+      /*
+      if (mypeerid !== 'undefined') {
+        console.log(`index: newPeer by ${mypeerid}`);
+        peer = new Peer(mypeerid, {key: key, debug: debug});
+      } else {
+        console.log(`index: newPeer no mypeerid`);
+        peer = new Peer({key: key, debug: debug});
+      }
+      */
       peer = new Peer({key: key, debug: debug});
-      peer.once('open', id => onOpenCallback(id));
+      peer.once('open', id => {
+        document.cookie = `mypeerid=${id}; max-age=36000`;
+        onOpenCallback(id);
+      });
       peer.on("error", (error) => {
         console.log(`${error.type}: ${error.message}`);
         onErrorCallback(`${error.type}: ${error.message}`);
