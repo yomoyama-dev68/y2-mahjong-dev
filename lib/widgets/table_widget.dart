@@ -269,6 +269,9 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // debugPrint(debugDescribeFocusTree());
+    // debugPrint(debugDescribeFocusTree());
+
     if (_imageMap.isEmpty) {
       return buildWaitingView("Loading images.");
     }

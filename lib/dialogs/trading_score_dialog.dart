@@ -113,7 +113,13 @@ class TradingScoreRequestWidgetState extends State<TradingScoreRequestWidget> {
   //final scrollController = ScrollController();
 
   void _onFocusChange(String peerId) async {
-    print("_onFocusChange: focus.offset=${focusMap[peerId]!.offset}");
+    final focus = focusMap[peerId]!;
+    print("_onFocusChange: focus.offset=${focus.offset}, "
+        "focus.hasFocus=${focus.hasFocus},"
+        "focus.hasPrimaryFocus=${focus.hasPrimaryFocus}");
+    if (focus.hasFocus == false) {
+      return;
+    }
 
     // Find the object which has the focus
     final key = keyMap[peerId]!;
