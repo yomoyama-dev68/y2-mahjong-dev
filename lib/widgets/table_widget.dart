@@ -14,6 +14,7 @@ import 'package:y2_mahjong/dialogs/trading_score_dialog.dart';
 import 'package:y2_mahjong/widgets/top_icon.dart';
 import 'package:y2_mahjong/widgets/voiced_icon.dart';
 import 'dart:ui' as ui;
+import '../table_controller.dart';
 import 'actions_bar_widget.dart';
 import 'audience_voice_icons.dart';
 import 'called_tiles_widget.dart';
@@ -22,6 +23,7 @@ import '../game_controller.dart' as game;
 import '../dialogs/name_set_dialog.dart';
 import '../dialogs/next_hand_dialog.dart';
 import '../table_controller.dart' as tbl;
+import 'discard_tile_animation.dart';
 import 'tiles_painter.dart';
 import 'table_ribbon_widget.dart';
 import 'mywall_widget.dart';
@@ -50,6 +52,8 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   final _streamController = StreamController<String>.broadcast();
   final _chatStreamController =
       StreamController<MapEntry<String, String>>.broadcast();
+  bool _needToStartDiscardTimeAnimation = false;
+  Timer? _notifyMyTurnTimer;
 
   @override
   void initState() {
@@ -185,6 +189,9 @@ class _GameTableWidgetState extends State<GameTableWidget> {
       };
       soundMap[updatedFor]?.call();
     }
+    if (updatedFor == "handleDiscardTile") {
+      _needToStartDiscardTimeAnimation = true;
+    }
     setState(() {});
   }
 
@@ -193,7 +200,13 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   }
 
   void onEventGameTable(String event) {
-    if (event == "onMyTurned") {}
+    if (event == "onMyTurned") {
+      Timer(const Duration(seconds: 5), () {
+        if (_game.isMyTurn() && _game.table.state == TableState.drawable) {
+          showNotifyDialog(context, message: "あなたの番です。");
+        }
+      });
+    }
     setState(() {});
   }
 
@@ -403,6 +416,12 @@ class _GameTableWidgetState extends State<GameTableWidget> {
           )));
     }
 
+    print(
+        "needToStartDiscardTimeAnimation: ${_needToStartDiscardTimeAnimation}");
+    if (_needToStartDiscardTimeAnimation) {
+      stacks.add(buildDiscardTileAnimation(peerId, tableSize, scale));
+    }
+
     final widgets = <Widget>[
       AudienceVoiceIcons(
           gameController: _game, streamController: _streamController),
@@ -437,6 +456,47 @@ class _GameTableWidgetState extends State<GameTableWidget> {
 
   void showChatDialog() {
     ChatDialog.showChatDialog(context, _game, _chatStreamController);
+  }
+
+  Widget buildDiscardTileAnimation(
+      String myPeerId, double tableSize, double scale) {
+    final playerOrder = _game.table.playerDataMap.keys.toList();
+    final baseIndex = playerOrder.indexOf(myPeerId);
+    var discardedPlayerIndex =
+        playerOrder.indexOf(_game.table.lastDiscardedPlayerPeerID);
+    if (discardedPlayerIndex < baseIndex) {
+      discardedPlayerIndex += 4;
+    }
+    final direction = discardedPlayerIndex - baseIndex;
+
+    final baseOffset = tableSize / 2 - tableSize / 4;
+    final offsets = [
+      Offset(0, baseOffset),
+      Offset(baseOffset, 0),
+      Offset(0, -baseOffset),
+      Offset(-baseOffset, 0),
+    ];
+
+    final image = getTileImage(_game.table.lastDiscardedTile, direction);
+    return Transform.translate(
+        offset: offsets[direction],
+        child: DiscardTileAnimation(
+            image: image,
+            listener: (status) {
+              print("DiscardTileAnimation: ${status}");
+              if (AnimationStatus.dismissed == status) {
+                print("needToStartDiscardTimeAnimation: clear");
+                _needToStartDiscardTimeAnimation = false;
+              }
+            }));
+  }
+
+  Image getTileImage(int tile, direction) {
+    // direction = 0: 打牌(上向, 1: 打牌(左向, 2: 打牌(下向, 3: 打牌(右向, 4: 自牌(上向,
+    final info = tbl.TileInfo(tile);
+    final key = "${info.type}_${info.number}_${direction}";
+    final image = _imageMap[key]!;
+    return image;
   }
 
   List<Widget> buildPlayerStateTiles(
