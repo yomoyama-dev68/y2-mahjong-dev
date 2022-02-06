@@ -284,6 +284,12 @@ class _GameTableWidgetState extends State<GameTableWidget> {
   Widget build(BuildContext context) {
     // debugPrint(debugDescribeFocusTree());
     // debugPrint(debugDescribeFocusTree());
+    final FocusScopeNode currentScope = FocusScope.of(context);
+    print("currentScope: ${currentScope}");
+    /*
+    if (!currentScope.hasPrimaryFocus && currentScope.hasFocus) {
+      FocusManager.instance.primaryFocus.unfocus();
+    }*/
 
     if (_imageMap.isEmpty) {
       return buildWaitingView("Loading images.");
@@ -392,6 +398,13 @@ class _GameTableWidgetState extends State<GameTableWidget> {
     stacks.add(GestureDetector(
         onTap: () {
           setState(() {
+            final FocusScopeNode currentScope = FocusScope.of(context);
+            print("currentScope: ${currentScope}");
+            if (!currentScope.hasPrimaryFocus && currentScope.hasFocus) {
+              if (FocusManager.instance.primaryFocus != null) {
+                FocusManager.instance.primaryFocus!.unfocus();
+              }
+            }
             showStageAndPlayerInfo = !showStageAndPlayerInfo;
           });
         },

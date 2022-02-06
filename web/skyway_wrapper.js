@@ -64,14 +64,14 @@
     }
 
     function analyseVoiceLooper(onAnalyseVoiceLoop) {
-      console.log('index: analyseVoiceLooper: E');
+      // console.log('index: analyseVoiceLooper: E');
       audioAnalyser.getByteTimeDomainData(audioDataArray);
       let minValue = audioDataArray.reduce((min, p) => p < min ? p : min);
       let maxValue = audioDataArray.reduce((max, p) => p > max ? p : max);
       let diffValue = maxValue - minValue;
-      console.log(diffValue);
+      // console.log(diffValue);
       onAnalyseVoiceLoop(diffValue);
-      console.log('index: analyseVoiceLooper: X');
+      // console.log('index: analyseVoiceLooper: X');
     }
 
     function newPeer(key, debug, onOpenCallback, onErrorCallback) {
