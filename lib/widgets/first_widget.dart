@@ -43,7 +43,7 @@ class FirstWidget extends StatelessWidget {
         FloatingActionButton(
             onPressed: () {
               window.open(
-                  'https://github.com/harayama-dev68/y2_mahjong_help',
+                  'https://github.com/yomoyama-dev68/y2-mahjong/tree/master/help',
                   '');
             },
             child: const Text("遊び方"))
